@@ -133,7 +133,7 @@ func main() {
 				fi.Width = 8
 			}
 			gprintf(`func (s %s) %s() uint%d {`, si.StructName, fi.Name, fi.Width)
-			gprintf(`return uint%d((s >> %d) & %s)`, fi.Width, int(si.Width)-(fi.Offset+fi.Bits), fi.Mask)
+			gprintf(`	return uint%d((s >> %d) & %s)`, fi.Width, int(si.Width)-(fi.Offset+fi.Bits), fi.Mask)
 			gprintf(`}`)
 			gprintf(``)
 
@@ -141,7 +141,7 @@ func main() {
 			shift := int(si.Width) - (fi.Offset + fi.Bits)
 			gprintf(`func (s %s) Set%s(val uint%d) %s {`, si.StructName, fi.Name, fi.Width, si.StructName)
 			mask := fmt.Sprintf("%s << %d", fi.Mask, shift)
-			gprintf(`return s ^ %s | (%s(val)&%s)<< %d`, mask, si.StructName, fi.Mask, shift)
+			gprintf(`	return s ^ %s | (%s(val)&%s)<< %d`, mask, si.StructName, fi.Mask, shift)
 			gprintf(`}`)
 			gprintf(``)
 		}
@@ -149,7 +149,6 @@ func main() {
 
 	buf, err := format.Source(bb.Bytes())
 	checkf(err, "go format failed:\n\n%s", bb.String())
-
 	checkf(os.WriteFile(out, buf, 0666), "write failed")
 }
 
