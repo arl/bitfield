@@ -26,6 +26,8 @@ type StructInfo struct {
 	Bits       int
 }
 
+var bb bytes.Buffer
+
 func main() {
 	var (
 		in, out string
@@ -35,7 +37,7 @@ func main() {
 
 	flag.StringVar(&in, "in", "", "input file name")
 	flag.StringVar(&out, "out", "", "output file name (defaults to [in]_bits.go)")
-	flag.StringVar(&tname, "type", "all", "struct name to read tags from (or all)")
+	flag.StringVar(&tname, "type", "all", "struct to converted into bitfield (or all)")
 	flag.StringVar(&pkgname, "pkg", "", "package name (defaults to input file package)")
 	flag.Parse()
 
@@ -105,7 +107,7 @@ func main() {
 		return
 	}
 
-	fmt.Fprintf(bb, "package %s\n\n", pkgname)
+	fmt.Fprintf(&bb, "package %s\n\n", pkgname)
 	for _, si := range structs {
 		gprintf(`type %s uint16`, si.StructName)
 		for _, fi := range si.Fields {
@@ -131,10 +133,8 @@ func main() {
 	checkf(os.WriteFile(out, buf, 0666), "write failed")
 }
 
-var bb = &bytes.Buffer{}
-
 func gprintf(format string, args ...any) {
-	fmt.Fprintf(bb, "%s\n", fmt.Sprintf(format, args...))
+	fmt.Fprintf(&bb, "%s\n", fmt.Sprintf(format, args...))
 }
 
 func checkf(err error, format string, args ...any) {
@@ -145,4 +145,13 @@ func checkf(err error, format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "bitfield, fatal error:")
 	fmt.Fprintf(os.Stderr, "\n\t%s: %s\n", fmt.Sprintf(format, args...), err)
 	os.Exit(1)
+}
+
+func nextpow2(n uint8) uint8 {
+	n--
+	n |= n >> 1
+	n |= n >> 2
+	n |= n >> 4
+	n++
+	return n
 }
