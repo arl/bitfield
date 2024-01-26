@@ -49,7 +49,6 @@ type Union struct {
 	Bits   int // bits actually used
 }
 
-var errTooManyBits = errors.New("too many bits")
 var errMalformedTag = errors.New("malformed struct tag")
 var errInvalidFieldSize = errors.New("invalid field size")
 
@@ -115,23 +114,23 @@ func main() {
 				for _, tag := range tags {
 					k, v, ok := strings.Cut(tag, "=")
 					if !ok {
-						checkf(errMalformedTag, "malformed struct tag for field %s", fieldName)
+						checkf(errMalformedTag, "field '%s' has a malformed struct tag", fieldName)
 					}
 					switch k {
 					case "bits":
 						ibits, err := strconv.Atoi(v)
-						if ibits <= 0 || ibits > 63 {
-							checkf(errInvalidFieldSize, "invalid bit count for field %s: %s", fieldName, v)
+						checkf(err, "failed to parse bit count for field '%s'", fieldName)
+						if ibits <= 0 || ibits > 64 {
+							fatalf("field '%s' has an invalid bit count (%d). Must be (0, 64]", fieldName, ibits)
 						}
-						checkf(err, "failed to parse bit count for field %s: %s", fieldName, v)
 						bits = ibits
 					case "union":
-						uname = tag
+						uname = v
 					}
 				}
 
 				if bits == 0 {
-					checkf(errInvalidFieldSize, "missing bit count for field %s: %s", fieldName, tags)
+					checkf(errInvalidFieldSize, "missing bit count for field '%s': %s", fieldName, tags)
 				}
 
 				if fieldName != "_" {
@@ -168,10 +167,13 @@ func main() {
 
 	for _, si := range structs {
 		gprintf(`type %s uint%d`, si.StructName, si.Width)
-		for _, u := range si.unions {
+		for un, u := range si.unions {
 			// Define the final type
 			if u.Bits > 64 {
-				checkf(errTooManyBits, "%s has %d bits", si.StructName, u.Bits)
+				if un == "default" {
+					fatalf("struct '%s' has too many bits (%d)", si.StructName, u.Bits)
+				}
+				fatalf("struct '%s' has too many bits in union '%s' (%d)", si.StructName, un, u.Bits)
 			}
 
 			for _, fi := range u.Fields {
@@ -218,6 +220,12 @@ func checkf(err error, format string, args ...any) {
 
 	fmt.Fprintf(os.Stderr, "bitfield, fatal error:")
 	fmt.Fprintf(os.Stderr, "\n\t%s: %s\n", fmt.Sprintf(format, args...), err)
+	os.Exit(1)
+}
+
+func fatalf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "bitfield, fatal error:")
+	fmt.Fprintf(os.Stderr, "\n\t%s\n", fmt.Sprintf(format, args...))
 	os.Exit(1)
 }
 

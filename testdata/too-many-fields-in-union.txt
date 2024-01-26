@@ -1,0 +1,26 @@
+exec go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in $WORK/mystruct.go
+! stdout .
+cp stderr got
+cmp got want
+
+-- mystruct.go --
+package main
+
+type MyStruct struct {
+	CoarseX    uint8  `bitfield:"bits=5"`
+	CoarseY    uint8  `bitfield:"bits=5"`
+	NametableX uint8  `bitfield:"bits=1"`
+	NametableY uint8  `bitfield:"bits=1"`
+	FineY      uint8  `bitfield:"bits=3"`
+	_          uint8  `bitfield:"bits=1"`
+	_          uint16 `bitfield:"bits=16"`
+	BigField   uint32 `bitfield:"bits=32"`
+
+	SuperBigField uint64 `bitfield:"bits=64,union=a"`
+	EigthBits     uint64 `bitfield:"bits=8,union=a"`
+}
+
+-- want --
+bitfield, fatal error:
+	struct 'MyStruct' has too many bits in union 'a' (72)
