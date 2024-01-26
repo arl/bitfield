@@ -36,6 +36,10 @@ func TestBitfield(t *testing.T) {
 	test(t, "mystruct_test.go", "mystruct_bits.go")
 }
 
+func TestMain(m *testing.M) {
+	os.Exit(testscript.RunMain(m, map[string]func() int{}))
+}
+
 func TestBitfieldCLI(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
