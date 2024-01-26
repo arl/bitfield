@@ -1,4 +1,5 @@
 ! bitfield -in $WORK/mystruct.go
+! stdout .
 cp stderr got
 cmp got want
 

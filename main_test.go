@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -32,11 +33,15 @@ func test(t *testing.T, args ...string) {
 }
 
 func TestBitfield(t *testing.T) {
-	generate(t, "-in", filepath.Join("testpkg", "mystruct.go"))
+	in := filepath.Join("testpkg", "mystruct.go")
+	out := filepath.Join("testpkg", "mystruct_bits.go")
+	generate(t, "-in", in, "-out", out)
 	test(t, "mystruct_test.go", "mystruct_bits.go")
 }
 
-func TestBitfieldCLI(t *testing.T) {
+var updateGolden = flag.Bool("update", false, "update testscripts golden files")
+
+func TestCLI(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
 		t.Fatalf("GetWd error: %v", err)
@@ -47,7 +52,8 @@ func TestBitfieldCLI(t *testing.T) {
 			env.Setenv("BITFIELD_DIR", wd)
 			return nil
 		},
-		TestWork: testing.Verbose(),
+		TestWork:      testing.Verbose(),
+		UpdateScripts: *updateGolden,
 		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
 			"bitfield": func(ts *testscript.TestScript, neg bool, args []string) {
 				cfg, out, err := parseFlags(args)

@@ -1,9 +1,10 @@
 ! bitfield -in $WORK/mystruct.go
+! stdout .
 cp stderr got
-cmp got want
+grep 'failed to parse input file' got
 
 -- mystruct.go --
-package main
+// missing 'package' directive
 
 type MyStruct struct {
 	CoarseX    uint8  `bitfield:"bits=5"`
@@ -16,6 +17,3 @@ type MyStruct struct {
 	BigField   uint32 `bitfield:"bits=32"`
 	Extra      uint8  `bitfield:"bits=1"`
 }
-
--- want --
-struct 'MyStruct' has too many bits (65)

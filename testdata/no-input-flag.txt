@@ -1,0 +1,7 @@
+! bitfield
+! stdout .
+cp stderr got
+cmp got want
+
+-- want --
+input file must be provided
