@@ -123,6 +123,10 @@ func run(cfg *config) error {
 			return true
 		}
 
+		if t.Name.Name != cfg.tname && cfg.tname != "all" {
+			return true
+		}
+
 		offsets := make(map[string]int)
 		structInfo := newStructInfo(t.Name.Name)
 		for _, field := range s.Fields.List {
