@@ -1,9 +1,10 @@
-! bitfield -in $WORK/mystruct.go
+# Control the total number of bits is < 65
+! bitfield -in $WORK/in.go
 ! stdout .
 cp stderr got
 cmp got want
 
--- mystruct.go --
+-- in.go --
 package main
 
 type MyStruct struct {

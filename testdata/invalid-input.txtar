@@ -1,9 +1,10 @@
-! bitfield -in $WORK/mystruct.go
+# Control we gracefully fail on invalid input.
+! bitfield -in $WORK/in.go
 ! stdout .
 cp stderr got
 grep 'failed to parse input file' got
 
--- mystruct.go --
+-- in.go --
 // missing 'package' directive
 
 type MyStruct struct {

@@ -1,9 +1,10 @@
-! bitfield -in $WORK/mystruct.go
+# Control the total number of bits for an union is < 65
+! bitfield -in $WORK/in.go
 ! stdout .
 cp stderr got
-cmp got want
+cmp got want.1
 
--- mystruct.go --
+-- in.go --
 package main
 
 type MyStruct struct {
@@ -20,5 +21,5 @@ type MyStruct struct {
 	EigthBits     uint64 `bitfield:"bits=8,union=a"`
 }
 
--- want --
+-- want.1 --
 struct 'MyStruct' has too many bits in union 'a' (72)
