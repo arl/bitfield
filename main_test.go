@@ -1,13 +1,13 @@
-package main_test
+package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/rogpeppe/go-internal/gotooltest"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -36,10 +36,6 @@ func TestBitfield(t *testing.T) {
 	test(t, "mystruct_test.go", "mystruct_bits.go")
 }
 
-func TestMain(m *testing.M) {
-	os.Exit(testscript.RunMain(m, map[string]func() int{}))
-}
-
 func TestBitfieldCLI(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -51,10 +47,20 @@ func TestBitfieldCLI(t *testing.T) {
 			env.Setenv("BITFIELD_DIR", wd)
 			return nil
 		},
-		TestWork: true,
-	}
-	if err := gotooltest.Setup(&params); err != nil {
-		t.Fatalf("gotooltest.Setup error: %v", err)
+		TestWork: testing.Verbose(),
+		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
+			"bitfield": func(ts *testscript.TestScript, neg bool, args []string) {
+				cfg, out, err := parseFlags(args)
+				if err != nil {
+					ts.Fatalf("parseFlags error: %s\n\noutput: %s", err, out)
+				}
+				err = run(cfg)
+				fmt.Fprint(ts.Stderr(), err, "\n")
+				if (err != nil) != neg {
+					ts.Fatalf("unexpected error: %v", err)
+				}
+			},
+		},
 	}
 	testscript.Run(t, params)
 }

@@ -1,6 +1,4 @@
-exec go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
-! exec $TMPDIR/bitfield -in $WORK/mystruct.go
-! stdout .
+! bitfield -in $WORK/mystruct.go
 cp stderr got
 cmp got want
 
@@ -20,5 +18,4 @@ type MyStruct struct {
 }
 
 -- want --
-bitfield, fatal error:
-	struct 'MyStruct' has too many bits (65)
+struct 'MyStruct' has too many bits (65)
