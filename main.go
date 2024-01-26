@@ -13,41 +13,6 @@ import (
 	"strings"
 )
 
-type fieldInfo struct {
-	Name   string
-	Mask   string
-	Offset int
-	Bits   int   // actual bit count
-	Width  uint8 // bits of the argument or return type
-}
-
-type structInfo struct {
-	StructName string
-	Width      uint8 // type width in bits
-	unions     map[string]*union
-}
-
-func newStructInfo(name string) *structInfo {
-	return &structInfo{
-		StructName: name,
-		unions:     make(map[string]*union),
-	}
-}
-
-func (si *structInfo) union(name string) *union {
-	if u, ok := si.unions[name]; ok {
-		return u
-	}
-	u := &union{}
-	si.unions[name] = u
-	return u
-}
-
-type union struct {
-	Fields []fieldInfo
-	Bits   int // bits actually used
-}
-
 type config struct {
 	in, out string
 	tname   string
@@ -97,6 +62,41 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\t%s\n", err)
 		os.Exit(1)
 	}
+}
+
+type fieldInfo struct {
+	Name   string
+	Mask   string
+	Offset int
+	Bits   int   // actual bit count
+	Width  uint8 // bits of the argument or return type
+}
+
+type structInfo struct {
+	StructName string
+	Width      uint8 // type width in bits
+	unions     map[string]*union
+}
+
+func newStructInfo(name string) *structInfo {
+	return &structInfo{
+		StructName: name,
+		unions:     make(map[string]*union),
+	}
+}
+
+func (si *structInfo) union(name string) *union {
+	if u, ok := si.unions[name]; ok {
+		return u
+	}
+	u := &union{}
+	si.unions[name] = u
+	return u
+}
+
+type union struct {
+	Fields []fieldInfo
+	Bits   int // bits actually used
 }
 
 func run(cfg *config) error {
