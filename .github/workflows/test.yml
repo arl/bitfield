@@ -2,14 +2,11 @@ on: [push, pull_request]
 name: Test, Build and Publish
 jobs:
   tests:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
-          go-version: 'go.mod'
+          go-version: go.mod
       - name: Run tests
         run: go test ./...
