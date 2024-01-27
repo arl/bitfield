@@ -62,8 +62,10 @@ func TestCLI(t *testing.T) {
 				}
 				err = run(cfg)
 				fmt.Fprint(ts.Stderr(), err, "\n")
-				if (err != nil) != neg {
-					ts.Fatalf("unexpected error: %v", err)
+				if neg && err == nil {
+					ts.Fatalf("expected failure but didn't fail")
+				} else if !neg && err != nil {
+					ts.Fatalf("unexpected failure:\n%s", err)
 				}
 			},
 		},
