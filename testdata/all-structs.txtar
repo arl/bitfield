@@ -27,7 +27,7 @@ func (s A) CoarseX() uint8 {
 }
 
 func (s A) SetCoarseX(val uint8) A {
-	return s&^0x3 | MyStruct(val&0x3)
+	return s&^0x3 | A(val&0x3)
 }
 
 func (s A) CoarseY() uint8 {
@@ -35,7 +35,7 @@ func (s A) CoarseY() uint8 {
 }
 
 func (s A) SetCoarseY(val uint8) A {
-	return s&^(0x7<<2) | (MyStruct(val&0x7) << 2)
+	return s&^(0x7<<2) | (A(val&0x7) << 2)
 }
 
 type B uint8
@@ -45,7 +45,7 @@ func (s B) CoarseX() uint8 {
 }
 
 func (s B) SetCoarseX(val uint8) B {
-	return s&^0x7 | MyStruct(val&0x7)
+	return s&^0x7 | B(val&0x7)
 }
 
 func (s B) CoarseY() uint8 {
@@ -53,5 +53,5 @@ func (s B) CoarseY() uint8 {
 }
 
 func (s B) SetCoarseY(val uint8) B {
-	return s&^(0x3<<3) | (MyStruct(val&0x3) << 3)
+	return s&^(0x3<<3) | (B(val&0x3) << 3)
 }
