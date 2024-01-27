@@ -1,0 +1,20 @@
+# Control that we correctly handle the case where -type X is
+# passed but X has no bitfield tag
+
+! bitfield -in $WORK/in.go -type A
+! stdout .
+cp stderr got
+cmp got want
+
+-- in.go --
+package testpkg
+
+type A struct {
+	F1 uint8 `json:"f1"`
+	F2 uint8 `json:"f2"`
+	F3 uint16
+	F4 uint8 `json:"f4"`
+}
+
+-- want --
+nothing to generate
