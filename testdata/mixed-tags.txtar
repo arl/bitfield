@@ -1,6 +1,8 @@
 # Control that we correctly parse mixed struct tags.
-bitfield -in $WORK/in.go -out $WORK/out.go -type A
-cmp $WORK/out.go $WORK/want.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+exec $TMPDIR/bitfield -in in.go -out out.go -type A
+! stderr .
+cmp out.go want.go
 
 -- in.go --
 package testpkg

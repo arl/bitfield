@@ -1,7 +1,8 @@
-! bitfield
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield
 ! stdout .
-cp stderr got
-cmp got want
+cmp stderr want
 
 -- want --
-input file must be provided
+bitfield, fatal error:
+	input file must be provided

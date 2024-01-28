@@ -1,13 +1,13 @@
 # Control the total number of bits for an union is < 65
-! bitfield -in $WORK/in.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go
 ! stdout .
-cp stderr got
-cmp got want.1
+cmp stderr want.1
 
 -- in.go --
 package main
 
-type MyStruct struct {
+type A struct {
 	CoarseX    uint8  `bitfield:"bits=5"`
 	CoarseY    uint8  `bitfield:"bits=5"`
 	NametableX uint8  `bitfield:"bits=1"`
@@ -22,4 +22,5 @@ type MyStruct struct {
 }
 
 -- want.1 --
-struct 'MyStruct' has too many bits in union 'a' (72)
+bitfield, fatal error:
+	struct 'A' has too many bits in union 'a' (72)

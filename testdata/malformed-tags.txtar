@@ -1,28 +1,24 @@
 # Control we catch malformed struct tags.
-! bitfield -in $WORK/in.go -type A
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -type A
 ! stdout .
-cp stderr got
-cmp got want.a
+cmp stderr want.a
 
-! bitfield -in $WORK/in.go -type B
+! exec $TMPDIR/bitfield -in in.go -type B
 ! stdout .
-cp stderr got
-cmp got want.b
+cmp stderr want.b
 
-! bitfield -in $WORK/in.go -type C
+! exec $TMPDIR/bitfield -in in.go -type C
 ! stdout .
-cp stderr got
-cmp got want.c
+cmp stderr want.c
 
-! bitfield -in $WORK/in.go -type D
+! exec $TMPDIR/bitfield -in in.go -type D
 ! stdout .
-cp stderr got
-cmp got want.d
+cmp stderr want.d
 
-! bitfield -in $WORK/in.go -type E
+! exec $TMPDIR/bitfield -in in.go -type E
 ! stdout .
-cp stderr got
-cmp got want.e
+cmp stderr want.e
 
 -- in.go --
 package testpkg
@@ -48,12 +44,17 @@ type E struct {
 }
 
 -- want.a --
-field 'F' has a malformed struct tag
+bitfield, fatal error:
+	field 'F' has a malformed struct tag
 -- want.b --
-failed to parse bit count for field 'F'
+bitfield, fatal error:
+	failed to parse bit count for field 'F'
 -- want.c --
-field 'F' has an invalid bit count (65), must be (0, 64]
+bitfield, fatal error:
+	field 'F' has an invalid bit count (65), must be (0, 64]
 -- want.d --
-field 'F' has a malformed struct tag
+bitfield, fatal error:
+	field 'F' has a malformed struct tag
 -- want.e --
-missing bit count for field 'F': [union=foo]
+bitfield, fatal error:
+	missing bit count for field 'F': [union=foo]

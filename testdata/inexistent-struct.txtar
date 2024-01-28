@@ -1,9 +1,9 @@
-# Control that we correctly handle the case where -type X is passed but X
-# doesn't exist or is not a struct.
-! bitfield -in $WORK/in.go -type B
+# Control that we handle the case where -type X is passed
+# but X doesn't exist or is not a struct.
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -type B
 ! stdout .
-cp stderr got
-cmp got want
+cmp stderr want
 
 -- in.go --
 package testpkg
@@ -16,4 +16,5 @@ type A struct {
 }
 
 -- want --
-nothing to generate
+bitfield, fatal error:
+	nothing to generate

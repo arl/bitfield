@@ -1,5 +1,6 @@
 # Control we gracefully fail on invalid input.
-! bitfield -in $WORK/in.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go
 ! stdout .
 cp stderr got
 grep 'failed to parse input file' got

@@ -2,13 +2,13 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/rogpeppe/go-internal/gotooltest"
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
@@ -47,28 +47,16 @@ func TestCLI(t *testing.T) {
 		t.Fatalf("GetWd error: %v", err)
 	}
 	params := testscript.Params{
-		Dir: "testdata",
+		Dir:           "testdata",
+		UpdateScripts: *updateGolden,
+		TestWork:      testing.Verbose(),
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("BITFIELD_DIR", wd)
 			return nil
 		},
-		TestWork:      testing.Verbose(),
-		UpdateScripts: *updateGolden,
-		Cmds: map[string]func(ts *testscript.TestScript, neg bool, args []string){
-			"bitfield": func(ts *testscript.TestScript, neg bool, args []string) {
-				cfg, out, err := parseFlags(args)
-				if err != nil {
-					ts.Fatalf("parseFlags error: %s\n\noutput: %s", err, out)
-				}
-				err = run(cfg)
-				fmt.Fprint(ts.Stderr(), err, "\n")
-				if neg && err == nil {
-					ts.Fatalf("expected failure but didn't fail")
-				} else if !neg && err != nil {
-					ts.Fatalf("unexpected failure:\n%s", err)
-				}
-			},
-		},
+	}
+	if err := gotooltest.Setup(&params); err != nil {
+		t.Fatalf("gotooltest.Setup error: %v", err)
 	}
 	testscript.Run(t, params)
 }

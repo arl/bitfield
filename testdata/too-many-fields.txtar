@@ -1,13 +1,13 @@
 # Control the total number of bits is < 65
-! bitfield -in $WORK/in.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go
 ! stdout .
-cp stderr got
-cmp got want
+cmp stderr want
 
 -- in.go --
 package main
 
-type MyStruct struct {
+type B struct {
 	CoarseX    uint8  `bitfield:"bits=5"`
 	CoarseY    uint8  `bitfield:"bits=5"`
 	NametableX uint8  `bitfield:"bits=1"`
@@ -20,4 +20,5 @@ type MyStruct struct {
 }
 
 -- want --
-struct 'MyStruct' has too many bits (65)
+bitfield, fatal error:
+	struct 'B' has too many bits (65)

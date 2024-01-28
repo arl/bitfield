@@ -1,10 +1,9 @@
-# Control that we correctly handle the case where -type X is
-# passed but X has no bitfield tag
-
-! bitfield -in $WORK/in.go -type A
+# Control that we handle the case where -type X is passed
+# but X has no bitfield tag.
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -type A
 ! stdout .
-cp stderr got
-cmp got want
+cmp stderr want
 
 -- in.go --
 package testpkg
@@ -17,4 +16,5 @@ type A struct {
 }
 
 -- want --
-nothing to generate
+bitfield, fatal error:
+	nothing to generate

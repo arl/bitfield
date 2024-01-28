@@ -1,13 +1,14 @@
 # Control we correctly skip non-tagged fields/structs.
-bitfield -in $WORK/in.go -out $WORK/out.1.go -type C
-cmp $WORK/out.1.go $WORK/want.1.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+exec $TMPDIR/bitfield -in in.go -out out.1.go -type C
+cmp out.1.go want.1.go
 ! stdout .
+! stderr .
 
 # Error message if B has no bitfield tag.
-! bitfield -in $WORK/in.go -out $WORK/out.2.go -type B
+! exec $TMPDIR/bitfield -in in.go -out out.2.go -type B
 ! stdout .
-cp stderr got
-cmp got want.2
+cmp stderr want.2
 
 -- in.go --
 package testpkg
@@ -48,4 +49,5 @@ func (s C) SetF2(val uint8) C {
 	return s&^0x7f | C(val&0x7f)
 }
 -- want.2 --
-nothing to generate
+bitfield, fatal error:
+	nothing to generate

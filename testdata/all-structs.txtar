@@ -1,6 +1,8 @@
 # Control we generate bitfields for all structs when not specified.
-bitfield -in $WORK/in.go -out $WORK/out.go
-cmp $WORK/out.go $WORK/want.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+exec $TMPDIR/bitfield -in in.go -out out.go
+! stderr .
+cmp out.go want.go
 
 -- in.go --
 package testpkg
