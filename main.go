@@ -59,6 +59,7 @@ type structInfo struct {
 	StructName string
 	Width      uint8 // type width in bits
 	unions     map[string]*union
+	unionOrder []string // unions in file order
 }
 
 func newStructInfo(name string) *structInfo {
@@ -72,9 +73,10 @@ func (si *structInfo) union(name string) *union {
 	if u, ok := si.unions[name]; ok {
 		return u
 	}
-	u := &union{}
-	si.unions[name] = u
-	return u
+	si.unionOrder = append(si.unionOrder, name)
+	var u union
+	si.unions[name] = &u
+	return &u
 }
 
 type union struct {
@@ -227,16 +229,17 @@ func run(cfg *config) error {
 			continue
 		}
 		g.printf(`type %s uint%d`, si.StructName, si.Width)
-		for un, u := range si.unions {
+		for _, uname := range si.unionOrder {
+			union := si.unions[uname]
 			// Define the final type
-			if u.Bits > 64 {
-				if un == "default" {
-					return fmt.Errorf("struct '%s' has too many bits (%d)", si.StructName, u.Bits)
+			if union.Bits > 64 {
+				if uname == "default" {
+					return fmt.Errorf("struct '%s' has too many bits (%d)", si.StructName, union.Bits)
 				}
-				return fmt.Errorf("struct '%s' has too many bits in union '%s' (%d)", si.StructName, un, u.Bits)
+				return fmt.Errorf("struct '%s' has too many bits in union '%s' (%d)", si.StructName, uname, union.Bits)
 			}
 
-			for _, fi := range u.Fields {
+			for _, fi := range union.Fields {
 				// Getter
 				if fi.Width < 8 {
 					fi.Width = 8
