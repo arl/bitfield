@@ -55,14 +55,6 @@ func main() {
 	}
 }
 
-type fieldInfo struct {
-	Name   string
-	Mask   string
-	Offset int
-	Bits   int   // actual bit count
-	Width  uint8 // bits of the argument or return type
-}
-
 type structInfo struct {
 	StructName string
 	Width      uint8 // type width in bits
@@ -88,6 +80,14 @@ func (si *structInfo) union(name string) *union {
 type union struct {
 	Fields []fieldInfo
 	Bits   int // bits actually used
+}
+
+type fieldInfo struct {
+	Name   string
+	Mask   string
+	Offset int
+	Bits   int   // actual bit count
+	Width  uint8 // bits of the argument or return type
 }
 
 func run(cfg *config) error {
