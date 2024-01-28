@@ -1,0 +1,10 @@
+exec touch out.go
+exec chmod ugo= out.go
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -out out.go
+! stdout .
+cmp stderr want
+
+-- want --
+bitfield, fatal error:
+	output file: open out.go: permission denied
