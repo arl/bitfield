@@ -1,0 +1,59 @@
+# Control we catch malformed struct tags.
+! bitfield -in $WORK/in.go -type A
+! stdout .
+cp stderr got
+cmp got want.a
+
+! bitfield -in $WORK/in.go -type B
+! stdout .
+cp stderr got
+cmp got want.b
+
+! bitfield -in $WORK/in.go -type C
+! stdout .
+cp stderr got
+cmp got want.c
+
+! bitfield -in $WORK/in.go -type D
+! stdout .
+cp stderr got
+cmp got want.d
+
+! bitfield -in $WORK/in.go -type E
+! stdout .
+cp stderr got
+cmp got want.e
+
+-- in.go --
+package testpkg
+
+type A struct {
+	F uint8 `json:"f2" bitfield:"bits2"`
+}
+
+type B struct {
+	F uint8 `json:"f2" bitfield:"bits=2x"`
+}
+
+type C struct {
+	F uint8 `json:"f2" bitfield:"bits=65"`
+}
+
+type D struct {
+	F uint8 `json:"f2" bitfield:""`
+}
+
+type E struct {
+	F uint8 `json:"f2" bitfield:"union=foo"`
+}
+
+-- want.a --
+field 'F' has a malformed struct tag
+-- want.b --
+failed to parse bit count for field 'F'
+-- want.c --
+field 'F' has an invalid bit count (65), must be (0, 64]
+-- want.d --
+field 'F' has a malformed struct tag
+-- want.e --
+missing bit count for field 'F': [union=foo]

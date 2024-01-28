@@ -2,7 +2,6 @@
 # doesn't exist or is not a struct.
 ! bitfield -in $WORK/in.go -type B
 ! stdout .
-! stdout .
 cp stderr got
 cmp got want
 
