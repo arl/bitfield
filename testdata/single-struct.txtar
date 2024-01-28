@@ -8,13 +8,13 @@ cmp out.go want.go
 package testpkg
 
 type A struct {
-	CoarseX    uint8 `bitfield:"bits=2"`
-	CoarseY    uint8 `bitfield:"bits=3"`
+	CoarseX    uint8 `bitfield:"2"`
+	CoarseY    uint8 `bitfield:"3"`
 }
 
 type B struct {
-	CoarseX    uint8 `bitfield:"bits=3"`
-	CoarseY    uint8 `bitfield:"bits=2"`
+	CoarseX    uint8 `bitfield:"3"`
+	CoarseY    uint8 `bitfield:"2"`
 }
 
 -- want.go --

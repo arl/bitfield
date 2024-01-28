@@ -111,8 +111,10 @@ func run(cfg *config) error {
 		return fmt.Errorf("failed to parse input file: %s", err)
 	}
 
-	var structs []*structInfo
-	var tErr error
+	var (
+		structs []*structInfo
+		tErr    error
+	)
 	ast.Inspect(node, func(n ast.Node) bool {
 		t, ok := n.(*ast.TypeSpec)
 		if !ok {
@@ -134,21 +136,25 @@ func run(cfg *config) error {
 			if field.Tag == nil {
 				continue
 			}
-			blocks := strings.Fields(strings.Trim(field.Tag.Value, "`"))
-			uname := "default"
-			for _, b := range blocks {
-				if !strings.HasPrefix(b, "bitfield:") {
+			tags := strings.Fields(strings.Trim(field.Tag.Value, "`"))
+			union := "default"
+			for _, tag := range tags {
+				if !strings.HasPrefix(tag, "bitfield:") {
 					continue
 				}
 
 				fieldName := field.Names[0].Name
-				tags := strings.Split(strings.Trim(b[9:], `"`), ",")
+				kvs := strings.Split(strings.Trim(tag[9:], `"`), ",")
 				bits := 0
-				for _, tag := range tags {
+				for _, tag := range kvs {
 					k, v, ok := strings.Cut(tag, "=")
 					if !ok {
-						tErr = fmt.Errorf("field '%s' has a malformed struct tag", fieldName)
-						return false
+						if bits != 0 {
+							tErr = fmt.Errorf("field '%s' has a malformed struct tag", fieldName)
+							return false
+						}
+						k = "bits"
+						v = tag
 					}
 					switch k {
 					case "bits":
@@ -164,26 +170,26 @@ func run(cfg *config) error {
 						}
 						bits = ibits
 					case "union":
-						uname = v
+						union = v
 					}
 				}
 
 				if bits == 0 {
-					tErr = fmt.Errorf("missing bit count for field '%s': %s", fieldName, tags)
+					tErr = fmt.Errorf("missing bit count for field '%s': %s", fieldName, kvs)
 					return false
 				}
 
 				if fieldName != "_" {
-					u := structInfo.union(uname)
+					u := structInfo.union(union)
 					u.Fields = append(u.Fields, fieldInfo{
 						Name:   fieldName,
-						Offset: offsets[uname],
+						Offset: offsets[union],
 						Bits:   bits,
 						Mask:   fmt.Sprintf("0x%x", 1<<uint64(bits)-1),
 						Width:  nextpow2(uint8(bits)),
 					})
 				}
-				offsets[uname] += bits
+				offsets[union] += bits
 			}
 		}
 

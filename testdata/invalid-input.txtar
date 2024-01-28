@@ -9,13 +9,13 @@ grep 'failed to parse input file' got
 // missing 'package' directive
 
 type MyStruct struct {
-	CoarseX    uint8  `bitfield:"bits=5"`
-	CoarseY    uint8  `bitfield:"bits=5"`
-	NametableX uint8  `bitfield:"bits=1"`
-	NametableY uint8  `bitfield:"bits=1"`
-	FineY      uint8  `bitfield:"bits=3"`
-	_          uint8  `bitfield:"bits=1"`
-	_          uint16 `bitfield:"bits=16"`
-	BigField   uint32 `bitfield:"bits=32"`
-	Extra      uint8  `bitfield:"bits=1"`
+	CoarseX    uint8  `bitfield:"5"`
+	CoarseY    uint8  `bitfield:"5"`
+	NametableX uint8  `bitfield:"1"`
+	NametableY uint8  `bitfield:"1"`
+	FineY      uint8  `bitfield:"3"`
+	_          uint8  `bitfield:"1"`
+	_          uint16 `bitfield:"16"`
+	BigField   uint32 `bitfield:"32"`
+	Extra      uint8  `bitfield:"1"`
 }

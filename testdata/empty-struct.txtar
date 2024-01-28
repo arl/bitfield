@@ -10,8 +10,8 @@ package testpkg
 type A struct {}
 
 type B struct {
-	CoarseX uint8 `bitfield:"bits=2"`
-	CoarseY uint8 `bitfield:"bits=3"`
+	CoarseX uint8 `bitfield:"2"`
+	CoarseY uint8 `bitfield:"3"`
 }
 
 -- want.1.go --

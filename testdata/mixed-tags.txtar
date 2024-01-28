@@ -8,8 +8,8 @@ cmp out.go want.go
 package testpkg
 
 type A struct {
-	F1 uint8  `bitfield:"bits=3" json:"f2"`
-	F2 uint8  `json:"f2" bitfield:"bits=2"`
+	F1 uint8  `bitfield:"3" json:"f2"`
+	F2 uint8  `json:"f2" bitfield:"2"`
 	F3 uint16 `protobuf:"fixed64,1,opt,name=value,proto3" json:"value,omitempty"`
 }
 

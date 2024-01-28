@@ -8,7 +8,7 @@ cmp stderr want
 package main
 
 type B struct {
-	F    uint8  `bitfield:"bits=0"`
+	F    uint8  `bitfield:"0"`
 }
 
 -- want --

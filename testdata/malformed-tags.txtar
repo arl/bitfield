@@ -28,11 +28,11 @@ type A struct {
 }
 
 type B struct {
-	F uint8 `json:"f2" bitfield:"bits=2x"`
+	F uint8 `json:"f2" bitfield:"2x"`
 }
 
 type C struct {
-	F uint8 `json:"f2" bitfield:"bits=65"`
+	F uint8 `json:"f2" bitfield:"65"`
 }
 
 type D struct {
@@ -45,7 +45,7 @@ type E struct {
 
 -- want.a --
 bitfield, fatal error:
-	field 'F' has a malformed struct tag
+	failed to parse bit count for field 'F'
 -- want.b --
 bitfield, fatal error:
 	failed to parse bit count for field 'F'
@@ -54,7 +54,7 @@ bitfield, fatal error:
 	field 'F' has an invalid bit count (65), must be (0, 64]
 -- want.d --
 bitfield, fatal error:
-	field 'F' has a malformed struct tag
+	failed to parse bit count for field 'F'
 -- want.e --
 bitfield, fatal error:
 	missing bit count for field 'F': [union=foo]

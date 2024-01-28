@@ -29,7 +29,7 @@ type B struct {
 
 type C struct {
 	F1 uint8
-	F2 uint8 `bitfield:"bits=7"`
+	F2 uint8 `bitfield:"7"`
 	F3 uint16
 	F4 uint8
 }

@@ -10,9 +10,9 @@ package testpkg
 
 type A struct {
 	F1 uint8 `json:"f1"`
-	F2 uint8 `bitfield:"bits=3",json:"f2"`
+	F2 uint8 `bitfield:"3",json:"f2"`
 	F3 uint16
-	F4 uint8 `json:"f2",bitfield:"bits=3"`
+	F4 uint8 `json:"f2",bitfield:"3"`
 }
 
 -- want --
