@@ -1,0 +1,16 @@
+# Control we don't accept a litteral 0 for the number of bits per field.
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go
+! stdout .
+cmp stderr want
+
+-- in.go --
+package main
+
+type B struct {
+	F    uint8  `bitfield:"bits=0"`
+}
+
+-- want --
+bitfield, fatal error:
+	field 'F' has an invalid bit count (0), must be (0, 64]
