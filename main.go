@@ -200,7 +200,7 @@ func run(cfg *config) error {
 		return tErr
 	}
 
-	if /*len(structs) == 0 ||*/ !slices.ContainsFunc(structs, func(si *structInfo) bool {
+	if !slices.ContainsFunc(structs, func(si *structInfo) bool {
 		return len(si.unions) > 0
 	}) {
 		return fmt.Errorf("nothing to generate")
