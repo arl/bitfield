@@ -88,8 +88,24 @@ type fieldInfo struct {
 	Name   string
 	Mask   string
 	Offset int
-	Bits   int   // actual bit count
-	Width  uint8 // bits of the argument or return type
+	Bits   int    // actual bit count
+	Width  uint8  // bits of the argument or return type
+	Type   string // org field type
+}
+
+// returns the type bit-width and a boolean indicating if we support it.
+func typeWidth(tname string) (int, bool) {
+	switch tname {
+	case "uint8":
+		return 8, true
+	case "uint16":
+		return 16, true
+	case "uint32":
+		return 32, true
+	case "uint64":
+		return 64, true
+	}
+	return 0, false
 }
 
 func run(cfg *config) error {
@@ -181,6 +197,16 @@ func run(cfg *config) error {
 					return false
 				}
 
+				tname := field.Type.(*ast.Ident).Name
+				twidth, ok := typeWidth(tname)
+				if !ok {
+					tErr = fmt.Errorf("field '%s' has an unsupported type %s", fieldName, tname)
+					return false
+				}
+				if twidth < bits {
+					tErr = fmt.Errorf("field '%s' can't represent %d bits with type %s", fieldName, bits, tname)
+					return false
+				}
 				if fieldName != "_" {
 					u := structInfo.union(union)
 					u.Fields = append(u.Fields, fieldInfo{
@@ -189,6 +215,7 @@ func run(cfg *config) error {
 						Bits:   bits,
 						Mask:   fmt.Sprintf("0x%x", 1<<uint64(bits)-1),
 						Width:  nextpow2(uint8(bits)),
+						Type:   tname,
 					})
 				}
 				offsets[union] += bits
@@ -244,18 +271,17 @@ func run(cfg *config) error {
 				if fi.Width < 8 {
 					fi.Width = 8
 				}
-				typ := fmt.Sprintf("uint%d", fi.Width)
-				g.printf(`func (s %s) %s() %s {`, si.StructName, fi.Name, typ)
+				g.printf(`func (s %s) %s() %s {`, si.StructName, fi.Name, fi.Type)
 				if fi.Offset > 0 {
-					g.printf(`	return %s((s >> %d) & %s)`, typ, fi.Offset, fi.Mask)
+					g.printf(`	return %s((s >> %d) & %s)`, fi.Type, fi.Offset, fi.Mask)
 				} else {
-					g.printf(`	return %s(s & %s)`, typ, fi.Mask)
+					g.printf(`	return %s(s & %s)`, fi.Type, fi.Mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
 
 				// Setter
-				g.printf(`func (s %s) Set%s(val %s) %s {`, si.StructName, fi.Name, typ, si.StructName)
+				g.printf(`func (s %s) Set%s(val %s) %s {`, si.StructName, fi.Name, fi.Type, si.StructName)
 				if fi.Offset > 0 {
 					g.printf(`	return s &^ (%s<<%d) | (%s(val&%s)<<%d)`, fi.Mask, fi.Offset, si.StructName, fi.Mask, fi.Offset)
 				} else {

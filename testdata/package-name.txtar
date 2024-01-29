@@ -1,4 +1,4 @@
-# Control we generate union in order of appearance.
+# Control the -pkg flag.
 go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
 exec $TMPDIR/bitfield -in in.go -pkg mypkg
 ! stderr .
