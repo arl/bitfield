@@ -59,3 +59,27 @@ func (s MyStruct) High() uint8 {
 func (s MyStruct) SetHigh(val uint8) MyStruct {
 	return s&^(0x7f<<8) | (MyStruct(val&0x7f) << 8)
 }
+
+func (s MyStruct) F1() bool {
+	return s&0x1 != 0
+}
+
+func (s MyStruct) SetF1(val bool) MyStruct {
+	var ival MyStruct
+	if val {
+		ival = 1
+	}
+	return s&^0x1 | ival<<0
+}
+
+func (s MyStruct) F2() bool {
+	return s&0x4 != 0
+}
+
+func (s MyStruct) SetF2(val bool) MyStruct {
+	var ival MyStruct
+	if val {
+		ival = 1
+	}
+	return s&^0x4 | ival<<2
+}

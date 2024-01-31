@@ -13,4 +13,8 @@ type MyStruct struct {
 
 	Low  uint8 `bitfield:"8,union=hl"`
 	High uint8 `bitfield:"7,union=hl"`
+
+	F1 bool `bitfield:"1,union=flags"`
+	_  bool `bitfield:"1,union=flags"`
+	F2 bool `bitfield:"1,union=flags"`
 }

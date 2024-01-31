@@ -130,3 +130,95 @@ func TestHigh(t *testing.T) {
 		}
 	}
 }
+
+func TestF1(t *testing.T) {
+	tests := []struct {
+		s    MyStruct
+		want bool
+	}{
+		{s: 0, want: false},
+		{s: 0b1111_1111, want: true},
+		{s: 0b1_1111_1110, want: false},
+		{s: 0b1000, want: false},
+		{s: 0b1101, want: true},
+		{s: 0b1, want: true},
+		{s: 0b10, want: false},
+		{s: 0b110, want: false},
+	}
+
+	for _, tt := range tests {
+		if got := tt.s.F1(); got != tt.want {
+			t.Errorf("MyStruct(%b).F1() = %t, want %t", tt.s, got, tt.want)
+		}
+	}
+}
+
+func TestSetF1(t *testing.T) {
+	tests := []struct {
+		s    MyStruct
+		val  bool
+		want MyStruct
+	}{
+		{s: 0, val: false, want: 0},
+		{s: 0, val: true, want: 1},
+		{s: 0b10, val: false, want: 0b10},
+		{s: 0b1000_0001, val: false, want: 0b1000_0000},
+		{s: 0b1000_0001, val: true, want: 0b1000_0001},
+		{s: 0b1111_1111, val: true, want: 0b1111_1111},
+		{s: 0b1111_1111, val: false, want: 0b1111_1110},
+		{s: 0b1111_1011, val: true, want: 0b1111_1011},
+		{s: 0b1111_1011, val: false, want: 0b1111_1010},
+	}
+
+	for _, tt := range tests {
+		if got := tt.s.SetF1(tt.val); got != tt.want {
+			t.Errorf("MyStruct(%b).SetF1(%t) = %b, want %b", tt.s, tt.val, got, tt.want)
+		}
+	}
+}
+
+func TestF2(t *testing.T) {
+	tests := []struct {
+		s    MyStruct
+		want bool
+	}{
+		{s: 0, want: false},
+		{s: 0b1111_1111, want: true},
+		{s: 0b1_1111_1011, want: false},
+		{s: 0b1000, want: false},
+		{s: 0b1100, want: true},
+		{s: 0b1, want: false},
+		{s: 0b10, want: false},
+		{s: 0b101, want: true},
+	}
+
+	for _, tt := range tests {
+		if got := tt.s.F2(); got != tt.want {
+			t.Errorf("MyStruct(%b).F2() = %t, want %t", tt.s, got, tt.want)
+		}
+	}
+}
+
+func TestSetF2(t *testing.T) {
+	tests := []struct {
+		s    MyStruct
+		val  bool
+		want MyStruct
+	}{
+		{s: 0, val: false, want: 0},
+		{s: 0, val: true, want: 0b100},
+		{s: 0, val: false, want: 0},
+		{s: 0b1000_0001, val: false, want: 0b1000_0001},
+		{s: 0b1000_0001, val: true, want: 0b1000_0101},
+		{s: 0b1111_1111, val: true, want: 0b1111_1111},
+		{s: 0b1111_1111, val: false, want: 0b1111_1011},
+		{s: 0b1111_1011, val: true, want: 0b1111_1111},
+		{s: 0b1111_1011, val: false, want: 0b1111_1011},
+	}
+
+	for _, tt := range tests {
+		if got := tt.s.SetF2(tt.val); got != tt.want {
+			t.Errorf("MyStruct(%b).SetF2(%t) = %b, want %b", tt.s, tt.val, got, tt.want)
+		}
+	}
+}
