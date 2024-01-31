@@ -15,7 +15,7 @@ import (
 func generate(t *testing.T, args ...string) {
 	t.Helper()
 
-	a := append([]string{"run", "main.go"}, args...)
+	a := append([]string{"run", "."}, args...)
 	cmd := exec.Command("go", a...)
 	if buf, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generate failed:\n%s\n%s\n\noutput:\n%s", strings.Join(a, " "), err, buf)
