@@ -56,16 +56,16 @@ func main() {
 }
 
 type structInfo struct {
-	StructName string
-	Width      uint8 // type width in bits
+	name       string
+	width      uint8 // type width in bits
 	unions     map[string]*union
 	unionOrder []string // unions in file order
 }
 
 func newStructInfo(name string) *structInfo {
 	return &structInfo{
-		StructName: name,
-		unions:     make(map[string]*union),
+		name:   name,
+		unions: make(map[string]*union),
 	}
 }
 
@@ -80,8 +80,8 @@ func (si *structInfo) union(name string) *union {
 }
 
 type union struct {
-	Fields []fieldInfo
-	Bits   int // bits actually used
+	fields []fieldInfo
+	bits   int // bits actually used
 }
 
 type fieldInfo struct {
@@ -106,6 +106,15 @@ func typeWidth(tname string) (int, bool) {
 		return 64, true
 	}
 	return 0, false
+}
+
+func nextpow2(n uint8) uint8 {
+	n--
+	n |= n >> 1
+	n |= n >> 2
+	n |= n >> 4
+	n++
+	return n
 }
 
 func run(cfg *config) error {
@@ -214,7 +223,7 @@ func run(cfg *config) error {
 					if tname == "bool" {
 						mask = 1 << uint64(off)
 					}
-					u.Fields = append(u.Fields, fieldInfo{
+					u.fields = append(u.fields, fieldInfo{
 						Name:   fieldName,
 						Offset: off,
 						Mask:   mask,
@@ -226,10 +235,10 @@ func run(cfg *config) error {
 		}
 
 		for n, u := range structInfo.unions {
-			u.Bits = offsets[n]
-			structInfo.Width = max(structInfo.Width, uint8(offsets[n]))
+			u.bits = offsets[n]
+			structInfo.width = max(structInfo.width, uint8(offsets[n]))
 		}
-		structInfo.Width = nextpow2(structInfo.Width)
+		structInfo.width = nextpow2(structInfo.width)
 		structs = append(structs, structInfo)
 		return true
 	})
@@ -258,20 +267,20 @@ func run(cfg *config) error {
 			// skip structs without any fields
 			continue
 		}
-		g.printf(`type %s uint%d`, si.StructName, si.Width)
+		g.printf(`type %s uint%d`, si.name, si.width)
 		for _, uname := range si.unionOrder {
 			union := si.unions[uname]
 			// Define the final type
-			if union.Bits > 64 {
+			if union.bits > 64 {
 				if uname == "default" {
-					return fmt.Errorf("struct '%s' has too many bits (%d)", si.StructName, union.Bits)
+					return fmt.Errorf("struct '%s' has too many bits (%d)", si.name, union.bits)
 				}
-				return fmt.Errorf("struct '%s' has too many bits in union '%s' (%d)", si.StructName, uname, union.Bits)
+				return fmt.Errorf("struct '%s' has too many bits in union '%s' (%d)", si.name, uname, union.bits)
 			}
 
-			for _, fi := range union.Fields {
+			for _, fi := range union.fields {
 				// Getter
-				g.printf(`func (s %s) %s() %s {`, si.StructName, fi.Name, fi.Type)
+				g.printf(`func (s %s) %s() %s {`, si.name, fi.Name, fi.Type)
 				switch {
 				case fi.Type == "bool":
 					g.printf(`	return s&0x%x != 0`, fi.Mask)
@@ -284,19 +293,19 @@ func run(cfg *config) error {
 				g.printf(``)
 
 				// Setter
-				g.printf(`func (s %s) Set%s(val %s) %s {`, si.StructName, fi.Name, fi.Type, si.StructName)
+				g.printf(`func (s %s) Set%s(val %s) %s {`, si.name, fi.Name, fi.Type, si.name)
 				switch {
 				case fi.Type == "bool":
 					// The generated assembly doesn't branch.
-					g.printf(`	var ival %s`, si.StructName)
+					g.printf(`	var ival %s`, si.name)
 					g.printf(`	if val {`)
 					g.printf(`		ival = 1`)
 					g.printf(`	}`)
 					g.printf(`return s&^0x%x | ival<<%d`, fi.Mask, fi.Offset)
 				case fi.Offset > 0:
-					g.printf(`	return s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, fi.Mask, fi.Offset, si.StructName, fi.Mask, fi.Offset)
+					g.printf(`	return s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, fi.Mask, fi.Offset, si.name, fi.Mask, fi.Offset)
 				default:
-					g.printf(`	return s &^ 0x%x | %s(val&0x%x)`, fi.Mask, si.StructName, fi.Mask)
+					g.printf(`	return s &^ 0x%x | %s(val&0x%x)`, fi.Mask, si.name, fi.Mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
@@ -324,13 +333,4 @@ func (g *generator) format(w io.Writer) error {
 		return fmt.Errorf("write failed: %s", err)
 	}
 	return nil
-}
-
-func nextpow2(n uint8) uint8 {
-	n--
-	n |= n >> 1
-	n |= n >> 2
-	n |= n >> 4
-	n++
-	return n
 }
