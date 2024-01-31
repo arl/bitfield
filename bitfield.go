@@ -27,7 +27,7 @@ func parseFlags(args []string) (*config, string, error) {
 	flags := flag.NewFlagSet("bitfield", flag.ContinueOnError)
 	var buf bytes.Buffer
 	flags.SetOutput(&buf)
-	flags.StringVar(&cfg.in, "in", "", "input file name (mandatory)")
+	flags.StringVar(&cfg.in, "in", "", "input file name (mandatory unless ran from go:generate comment)")
 	flags.StringVar(&cfg.out, "out", "", "output file name (defaults to stdout)")
 	flags.StringVar(&cfg.tname, "type", "all", "struct to convert into bitfield (or all)")
 	flags.StringVar(&cfg.pkgname, "pkg", "", "package name (defaults to input file package)")
@@ -46,6 +46,10 @@ func main() {
 	} else if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
+	}
+
+	if goFile := os.Getenv("GOFILE"); cfg.in == "" && goFile != "" {
+		cfg.in = goFile
 	}
 
 	if err := run(cfg); err != nil {
