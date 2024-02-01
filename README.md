@@ -69,7 +69,7 @@ func (s Scroll) SetY(val uint8) Scroll {
 Note that both getter and setter methods are defined on by-value receiver. That's why setters return the modified value.
 
 
-### Supported field types for fields
+### Supported field types
 
 The types of the field in the input filefield of a type in the original
 These are the types 
