@@ -120,8 +120,8 @@ type Addr struct {
 	l uint8 `bitfield:"8,union=lohi"`
 	h uint8 `bitfield:"7,union=lohi"`
 
-    // Implicitely uses the 'main' union
-    val uint8 `bitfield:"14"`
+	// When not specified, implicitely uses the 'default' union.
+	val uint8 `bitfield:"14"`
 }
 ```
 
