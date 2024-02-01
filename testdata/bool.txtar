@@ -18,7 +18,6 @@ type A struct {
 
 type B struct {
 	_  uint32 `bitfield:"30"`
-	// TODO this should raise an error since bitfield should be 1 with bool types
 	F1 bool   `bitfield:"2"`
 }
 
