@@ -1,18 +1,18 @@
 # Control we check and use the original field type.
 go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
-exec $TMPDIR/bitfield -in in.go -type A
+exec $TMPDIR/bitfield -in in.go -out out.go -type A
 ! stderr .
-cmp stdout want.a.go
+cmp out.go want.a.go
 
-exec $TMPDIR/bitfield -in in.go -type B
+exec $TMPDIR/bitfield -in in.go -out out.go -type B
 ! stderr .
-cmp stdout want.b.go
+cmp out.go want.b.go
 
-! exec $TMPDIR/bitfield -in in.go -type C
+! exec $TMPDIR/bitfield -in in.go -out out.go -type C
 ! stdout .
 cmp stderr want.c
 
-! exec $TMPDIR/bitfield -in in.go -type D
+! exec $TMPDIR/bitfield -in in.go -out out.go -type D
 ! stdout .
 cmp stderr want.d
 

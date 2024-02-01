@@ -27,10 +27,10 @@ func parseFlags(args []string) (*config, string, error) {
 	flags := flag.NewFlagSet("bitfield", flag.ContinueOnError)
 	var buf bytes.Buffer
 	flags.SetOutput(&buf)
-	flags.StringVar(&cfg.in, "in", "", "input file name (mandatory unless ran from go:generate comment)")
-	flags.StringVar(&cfg.out, "out", "", "output file name (defaults to stdout)")
-	flags.StringVar(&cfg.tname, "type", "all", "struct to convert into bitfield (or all)")
-	flags.StringVar(&cfg.pkgname, "pkg", "", "package name (defaults to input file package)")
+	flags.StringVar(&cfg.in, "in", "", "INPUT file name (necessary unless within a go:generate comment)")
+	flags.StringVar(&cfg.out, "out", "", "output file name (defaults to standard output)")
+	flags.StringVar(&cfg.tname, "type", "all", "type name of the struct to convert (defaults to all structs in INPUT file)")
+	flags.StringVar(&cfg.pkgname, "pkg", "", "package name (defaults to INPUT file package)")
 	if err := flags.Parse(args); err != nil {
 		return nil, buf.String(), err
 	}
