@@ -89,10 +89,10 @@ type union struct {
 }
 
 type fieldInfo struct {
-	Name   string
-	Mask   uint64
-	Offset int
-	Type   string // org field type
+	name   string
+	mask   uint64
+	offset int
+	typ   string // org field type
 }
 
 // returns the type bit-width and a boolean indicating if we support it.
@@ -228,10 +228,10 @@ func run(cfg *config) error {
 						mask = 1 << uint64(off)
 					}
 					u.fields = append(u.fields, fieldInfo{
-						Name:   fieldName,
-						Offset: off,
-						Mask:   mask,
-						Type:   tname,
+						name:   fieldName,
+						offset: off,
+						mask:   mask,
+						typ:   tname,
 					})
 				}
 				offsets[union] += bits
@@ -284,32 +284,32 @@ func run(cfg *config) error {
 
 			for _, fi := range union.fields {
 				// Getter
-				g.printf(`func (s %s) %s() %s {`, si.name, fi.Name, fi.Type)
+				g.printf(`func (s %s) %s() %s {`, si.name, fi.name, fi.typ)
 				switch {
-				case fi.Type == "bool":
-					g.printf(`	return s&0x%x != 0`, fi.Mask)
-				case fi.Offset > 0:
-					g.printf(`	return %s((s >> %d) & 0x%x)`, fi.Type, fi.Offset, fi.Mask)
+				case fi.typ == "bool":
+					g.printf(`	return s&0x%x != 0`, fi.mask)
+				case fi.offset > 0:
+					g.printf(`	return %s((s >> %d) & 0x%x)`, fi.typ, fi.offset, fi.mask)
 				default:
-					g.printf(`	return %s(s & 0x%x)`, fi.Type, fi.Mask)
+					g.printf(`	return %s(s & 0x%x)`, fi.typ, fi.mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
 
 				// Setter
-				g.printf(`func (s %s) Set%s(val %s) %s {`, si.name, fi.Name, fi.Type, si.name)
+				g.printf(`func (s %s) Set%s(val %s) %s {`, si.name, fi.name, fi.typ, si.name)
 				switch {
-				case fi.Type == "bool":
+				case fi.typ == "bool":
 					// The generated assembly doesn't branch.
 					g.printf(`	var ival %s`, si.name)
 					g.printf(`	if val {`)
 					g.printf(`		ival = 1`)
 					g.printf(`	}`)
-					g.printf(`return s&^0x%x | ival<<%d`, fi.Mask, fi.Offset)
-				case fi.Offset > 0:
-					g.printf(`	return s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, fi.Mask, fi.Offset, si.name, fi.Mask, fi.Offset)
+					g.printf(`return s&^0x%x | ival<<%d`, fi.mask, fi.offset)
+				case fi.offset > 0:
+					g.printf(`	return s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, fi.mask, fi.offset, si.name, fi.mask, fi.offset)
 				default:
-					g.printf(`	return s &^ 0x%x | %s(val&0x%x)`, fi.Mask, si.name, fi.Mask)
+					g.printf(`	return s &^ 0x%x | %s(val&0x%x)`, fi.mask, si.name, fi.mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
