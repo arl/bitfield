@@ -325,7 +325,7 @@ type generator struct {
 }
 
 func (g *generator) printf(format string, args ...any) {
-	fmt.Fprintf(&g.buf, "%s\n", fmt.Sprintf(format, args...))
+	fmt.Fprintf(&g.buf, format+"\n", args...)
 }
 
 func (g *generator) format(w io.Writer) error {
