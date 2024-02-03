@@ -71,17 +71,16 @@ Note that both getter and setter methods are defined on by-value receiver. That'
 
 ### Supported field types
 
-The types of the field in the input filefield of a type in the original
-These are the types 
+These are the allowed types for the fields of the input struct:
  - bool
  - uint8
  - uint16
  - uint32
  - uint64
 
-`bool` can only be defined with a 1-bit wide field.
+`bool` can only be defined on a 1-bit wide field.
 
-`bitfield` automatically uses the smallest unsigned integer to accomodate for all the bits.
+For the generated type, `bitfield` automatically uses the smallest unsigned integer to accomodate for all the bits of the field.
 
 
 ### Bit fields with anonymous unions
