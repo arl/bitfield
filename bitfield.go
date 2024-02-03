@@ -178,6 +178,12 @@ func run(cfg *config) error {
 				}
 
 				fieldName := field.Names[0].Name
+
+				if !strings.HasPrefix(tag[9:], `"`) || !strings.HasSuffix(tag, `"`) {
+					tErr = fmt.Errorf("field '%s' has a malformed struct tag", fieldName)
+					return false
+				}
+
 				kvs := strings.Split(strings.Trim(tag[9:], `"`), ",")
 				bits := 0
 				for _, tag := range kvs {
@@ -208,18 +214,17 @@ func run(cfg *config) error {
 					}
 				}
 
-				if bits == 0 {
-					tErr = fmt.Errorf("missing bit count for field '%s': %s", fieldName, kvs)
-					return false
-				}
-
 				tname := field.Type.(*ast.Ident).Name
 				twidth, ok := typeWidth(tname)
 				if !ok {
 					tErr = fmt.Errorf("field '%s' has an unsupported type %s", fieldName, tname)
 					return false
 				}
-				if twidth < bits {
+				switch {
+				case bits == 0:
+					tErr = fmt.Errorf("missing bit count for field '%s': %s", fieldName, kvs)
+					return false
+				case twidth < bits:
 					tErr = fmt.Errorf("field '%s' can't represent %d bits with type %s", fieldName, bits, tname)
 					return false
 				}
