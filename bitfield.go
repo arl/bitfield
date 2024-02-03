@@ -92,7 +92,7 @@ type fieldInfo struct {
 	name   string
 	mask   uint64
 	offset int
-	typ   string // org field type
+	typ    string // org field type
 }
 
 // returns the type bit-width and a boolean indicating if we support it.
@@ -151,18 +151,21 @@ func run(cfg *config) error {
 		if !ok {
 			return true
 		}
+		tname := t.Name.Name
 
 		s, ok := t.Type.(*ast.StructType)
 		if !ok {
-			return true
+			if cfg.tname != "all" && tname == cfg.tname {
+				tErr = fmt.Errorf("type %s is not a struct", cfg.tname)
+			}
+			return false
 		}
-
-		if t.Name.Name != cfg.tname && cfg.tname != "all" {
+		if tname != cfg.tname && cfg.tname != "all" {
 			return true
 		}
 
 		offsets := make(map[string]int)
-		structInfo := newStructInfo(t.Name.Name)
+		structInfo := newStructInfo(tname)
 		for _, field := range s.Fields.List {
 			if field.Tag == nil {
 				continue
@@ -231,7 +234,7 @@ func run(cfg *config) error {
 						name:   fieldName,
 						offset: off,
 						mask:   mask,
-						typ:   tname,
+						typ:    tname,
 					})
 				}
 				offsets[union] += bits
@@ -249,6 +252,10 @@ func run(cfg *config) error {
 	if tErr != nil {
 		// Return the error set during the AST traversal.
 		return tErr
+	}
+
+	if cfg.tname != "all" && len(structs) == 0 {
+		return fmt.Errorf("struct %s not found", cfg.tname)
 	}
 
 	if !slices.ContainsFunc(structs, func(si *structInfo) bool {

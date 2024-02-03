@@ -1,9 +1,21 @@
-# Control that we handle the case where -type X is passed
-# but X doesn't exist or is not a struct.
+# Check we gracefully handle '-type X' when X doesn't exist.
 go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
 ! exec $TMPDIR/bitfield -in in.go -type B
 ! stdout .
-cmp stderr want
+cmp stderr want.1
+
+# Check we handle -type X and X is an int.
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -type C
+! stdout .
+cmp stderr want.2
+
+# Check we handle -type X and X is a function type.
+go build -C $BITFIELD_DIR -o $TMPDIR/bitfield
+! exec $TMPDIR/bitfield -in in.go -type D
+! stdout .
+cmp stderr want.3
+
 
 -- in.go --
 package testpkg
@@ -15,6 +27,15 @@ type A struct {
 	F4 uint8 `json:"f2",bitfield:"3"`
 }
 
--- want --
+type C int
+type D func() 
+
+-- want.1 --
 bitfield, fatal error:
-	nothing to generate
+	struct B not found
+-- want.2 --
+bitfield, fatal error:
+	type C is not a struct
+-- want.3 --
+bitfield, fatal error:
+	type D is not a struct
