@@ -45,20 +45,20 @@ package testpkg
 
 type A uint8
 
-func (s A) F1() uint16 {
-	return uint16(s & 0x3)
+func (a A) F1() uint16 {
+	return uint16(a & 0x3)
 }
 
-func (s A) SetF1(val uint16) A {
-	return s&^0x3 | A(val&0x3)
+func (a A) SetF1(val uint16) A {
+	return a&^0x3 | A(val&0x3)
 }
 
-func (s A) F2() uint8 {
-	return uint8((s >> 2) & 0x7)
+func (a A) F2() uint8 {
+	return uint8((a >> 2) & 0x7)
 }
 
-func (s A) SetF2(val uint8) A {
-	return s&^(0x7<<2) | (A(val&0x7) << 2)
+func (a A) SetF2(val uint8) A {
+	return a&^(0x7<<2) | (A(val&0x7) << 2)
 }
 -- want.b.go --
 package testpkg
@@ -67,20 +67,20 @@ package testpkg
 
 type B uint32
 
-func (s B) F1() uint16 {
-	return uint16(s & 0xffff)
+func (b B) F1() uint16 {
+	return uint16(b & 0xffff)
 }
 
-func (s B) SetF1(val uint16) B {
-	return s&^0xffff | B(val&0xffff)
+func (b B) SetF1(val uint16) B {
+	return b&^0xffff | B(val&0xffff)
 }
 
-func (s B) F2() uint8 {
-	return uint8((s >> 16) & 0x7)
+func (b B) F2() uint8 {
+	return uint8((b >> 16) & 0x7)
 }
 
-func (s B) SetF2(val uint8) B {
-	return s&^(0x7<<16) | (B(val&0x7) << 16)
+func (b B) SetF2(val uint8) B {
+	return b&^(0x7<<16) | (B(val&0x7) << 16)
 }
 -- want.c --
 bitfield, fatal error:

@@ -27,20 +27,20 @@ package testpkg
 
 type A uint8
 
-func (s A) F1() uint16 {
-	return uint16(s & 0x3)
+func (a A) F1() uint16 {
+	return uint16(a & 0x3)
 }
 
-func (s A) SetF1(val uint16) A {
-	return s&^0x3 | A(val&0x3)
+func (a A) SetF1(val uint16) A {
+	return a&^0x3 | A(val&0x3)
 }
 
-func (s A) F2() uint8 {
-	return uint8((s >> 2) & 0x7)
+func (a A) F2() uint8 {
+	return uint8((a >> 2) & 0x7)
 }
 
-func (s A) SetF2(val uint8) A {
-	return s&^(0x7<<2) | (A(val&0x7) << 2)
+func (a A) SetF2(val uint8) A {
+	return a&^(0x7<<2) | (A(val&0x7) << 2)
 }
 -- want.err --
 bitfield, fatal error:

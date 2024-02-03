@@ -28,16 +28,16 @@ package testpkg
 
 type A uint64
 
-func (s A) F1() bool {
-	return s&0x4000000000000000 != 0
+func (a A) F1() bool {
+	return a&0x4000000000000000 != 0
 }
 
-func (s A) SetF1(val bool) A {
+func (a A) SetF1(val bool) A {
 	var ival A
 	if val {
 		ival = 1
 	}
-	return s&^0x4000000000000000 | ival<<62
+	return a&^0x4000000000000000 | ival<<62
 }
 -- want.b --
 bitfield, fatal error:

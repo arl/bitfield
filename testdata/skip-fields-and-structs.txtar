@@ -41,12 +41,12 @@ package testpkg
 
 type C uint8
 
-func (s C) F2() uint8 {
-	return uint8(s & 0x7f)
+func (c C) F2() uint8 {
+	return uint8(c & 0x7f)
 }
 
-func (s C) SetF2(val uint8) C {
-	return s&^0x7f | C(val&0x7f)
+func (c C) SetF2(val uint8) C {
+	return c&^0x7f | C(val&0x7f)
 }
 -- want.2 --
 bitfield, fatal error:
