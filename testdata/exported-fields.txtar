@@ -13,8 +13,8 @@ type a struct {
 }
 
 type B struct {
-	CoarseX    uint8 `bitfield:"3"`
-	coarseY    uint8 `bitfield:"2"`
+	CoarseX    uint8 `bitfield:"2"`
+	coarseY    uint8 `bitfield:"3"`
 }
 
 -- want.go --
@@ -25,35 +25,35 @@ package testpkg
 type a uint8
 
 func (s a) coarseX() uint8 {
-	return uint8(s & 0x7)
+	return uint8(s & 0x3)
 }
 
-func (s a) setCoarseX(val uint8) B {
-	return s&^0x7 | B(val&0x7)
+func (s a) setCoarseX(val uint8) a {
+	return s&^0x3 | a(val&0x3)
 }
 
 func (s a) CoarseY() uint8 {
-	return uint8((s >> 3) & 0x3)
+	return uint8((s >> 2) & 0x7)
 }
 
-func (s a) SetCoarseY(val uint8) B {
-	return s&^(0x3<<3) | (B(val&0x3) << 3)
+func (s a) SetCoarseY(val uint8) a {
+	return s&^(0x7<<2) | (a(val&0x7) << 2)
 }
 
 type B uint8
 
-func (s B) CoarseX() uint8 {
-	return uint8(s & 0x7)
+func (b B) CoarseX() uint8 {
+	return uint8(b & 0x3)
 }
 
-func (s B) SetCoarseX(val uint8) B {
-	return s&^0x7 | B(val&0x7)
+func (b B) SetCoarseX(val uint8) B {
+	return b&^0x3 | B(val&0x3)
 }
 
-func (s B) coarseY() uint8 {
-	return uint8((s >> 3) & 0x3)
+func (b B) coarseY() uint8 {
+	return uint8((b >> 2) & 0x7)
 }
 
-func (s B) setCoarseY(val uint8) B {
-	return s&^(0x3<<3) | (B(val&0x3) << 3)
+func (b B) setCoarseY(val uint8) B {
+	return b&^(0x7<<2) | (B(val&0x7) << 2)
 }

@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type config struct {
@@ -73,6 +74,21 @@ func newStructInfo(name string) *structInfo {
 	}
 }
 
+func (si structInfo) receiver() string {
+	name := []rune(si.name)
+	if unicode.IsUpper(name[0]) {
+		return string(unicode.ToLower(name[0]))
+	}
+
+	if len(name) == 1 {
+		if si.name[0] != 's' {
+			return "s"
+		}
+		return "x"
+	}
+	return si.name[:1]
+}
+
 func (si *structInfo) union(name string) *union {
 	if u, ok := si.unions[name]; ok {
 		return u
@@ -93,6 +109,19 @@ type fieldInfo struct {
 	mask   uint64
 	offset int
 	typ    string // org field type
+}
+
+func (fi fieldInfo) getter() string {
+	return fi.name
+}
+
+func (fi fieldInfo) setter() string {
+	name := []rune(fi.name)
+	if unicode.IsUpper(name[0]) {
+		return "Set" + fi.name
+	}
+
+	return "set" + string(unicode.ToUpper(name[0])) + string(name[1:])
 }
 
 // returns the type bit-width and a boolean indicating if we support it.
@@ -296,20 +325,20 @@ func run(cfg *config) error {
 
 			for _, fi := range union.fields {
 				// Getter
-				g.printf(`func (s %s) %s() %s {`, si.name, fi.name, fi.typ)
+				g.printf(`func (%s %s) %s() %s {`, si.receiver(), si.name, fi.getter(), fi.typ)
 				switch {
 				case fi.typ == "bool":
-					g.printf(`	return s&0x%x != 0`, fi.mask)
+					g.printf(`	return %s&0x%x != 0`, si.receiver(), fi.mask)
 				case fi.offset > 0:
-					g.printf(`	return %s((s >> %d) & 0x%x)`, fi.typ, fi.offset, fi.mask)
+					g.printf(`	return %s((%s >> %d) & 0x%x)`, fi.typ, si.receiver(), fi.offset, fi.mask)
 				default:
-					g.printf(`	return %s(s & 0x%x)`, fi.typ, fi.mask)
+					g.printf(`	return %s(%s & 0x%x)`, fi.typ, si.receiver(), fi.mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
 
 				// Setter
-				g.printf(`func (s %s) Set%s(val %s) %s {`, si.name, fi.name, fi.typ, si.name)
+				g.printf(`func (%s %s) %s(val %s) %s {`, si.receiver(), si.name, fi.setter(), fi.typ, si.name)
 				switch {
 				case fi.typ == "bool":
 					// The generated assembly doesn't branch.
@@ -317,11 +346,11 @@ func run(cfg *config) error {
 					g.printf(`	if val {`)
 					g.printf(`		ival = 1`)
 					g.printf(`	}`)
-					g.printf(`return s&^0x%x | ival<<%d`, fi.mask, fi.offset)
+					g.printf(`return %s&^0x%x | ival<<%d`, si.receiver(), fi.mask, fi.offset)
 				case fi.offset > 0:
-					g.printf(`	return s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, fi.mask, fi.offset, si.name, fi.mask, fi.offset)
+					g.printf(`	return %s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, si.receiver(), fi.mask, fi.offset, si.name, fi.mask, fi.offset)
 				default:
-					g.printf(`	return s &^ 0x%x | %s(val&0x%x)`, fi.mask, si.name, fi.mask)
+					g.printf(`	return %s &^ 0x%x | %s(val&0x%x)`, si.receiver(), fi.mask, si.name, fi.mask)
 				}
 				g.printf(`}`)
 				g.printf(``)
