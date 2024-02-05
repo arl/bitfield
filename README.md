@@ -53,20 +53,22 @@ func (s Scroll) X() uint8 {
 	return uint8(s & 0x1f)
 }
 
-func (s Scroll) SetX(val uint8) Scroll {
-	return s&^0x1f | Scroll(val&0x1f)
+func (s *Scroll) SetX(val uint8) {
+	*s &^= 0x1f
+	*s |= Scroll(val & 0x1f)
 }
 
 func (s Scroll) Y() uint8 {
 	return uint8((s >> 5) & 0x1f)
 }
 
-func (s Scroll) SetY(val uint8) Scroll {
-	return s&^(0x1f<<5) | (Scroll(val&0x1f) << 5)
+func (s *Scroll) SetY(val uint8) {
+	*s &^= 0x1f << 5
+	*s |= Scroll(val&0x1f) << 5
 }
 ```
 
-Note that both getter and setter methods are defined on by-value receiver. That's why setters return the modified value.
+Note that both getters are defined on the value and setters on the pointer.
 
 
 ### Supported field types
