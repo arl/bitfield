@@ -338,7 +338,7 @@ func run(cfg *config) error {
 				g.printf(``)
 
 				// Setter
-				g.printf(`func (%s %s) %s(val %s) %s {`, si.receiver(), si.name, fi.setter(), fi.typ, si.name)
+				g.printf(`func (%s *%s) %s(val %s) {`, si.receiver(), si.name, fi.setter(), fi.typ)
 				switch {
 				case fi.typ == "bool":
 					// The generated assembly doesn't branch.
@@ -346,11 +346,18 @@ func run(cfg *config) error {
 					g.printf(`	if val {`)
 					g.printf(`		ival = 1`)
 					g.printf(`	}`)
-					g.printf(`return %s&^0x%x | ival<<%d`, si.receiver(), fi.mask, fi.offset)
-				case fi.offset > 0:
-					g.printf(`	return %s &^ (0x%x<<%d) | (%s(val&0x%x)<<%d)`, si.receiver(), fi.mask, fi.offset, si.name, fi.mask, fi.offset)
+					g.printf(`	*%s &^= 0x%x`, si.receiver(), fi.mask)
+					if fi.offset == 0 {
+						g.printf(`	*%s |= ival`, si.receiver())
+					} else {
+						g.printf(`	*%s |= ival<<%d`, si.receiver(), fi.offset)
+					}
+				case fi.offset == 0:
+					g.printf(`	*%s &^= 0x%x`, si.receiver(), fi.mask)
+					g.printf(`	*%s |= %s(val&0x%x)`, si.receiver(), si.name, fi.mask)
 				default:
-					g.printf(`	return %s &^ 0x%x | %s(val&0x%x)`, si.receiver(), fi.mask, si.name, fi.mask)
+					g.printf(`	*%s &^= 0x%x<<%d`, si.receiver(), fi.mask, fi.offset)
+					g.printf(`	*%s |= %s(val&0x%x)<<%d`, si.receiver(), si.name, fi.mask, fi.offset)
 				}
 				g.printf(`}`)
 				g.printf(``)
