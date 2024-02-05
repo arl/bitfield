@@ -25,14 +25,16 @@ func (b B) CoarseX() uint8 {
 	return uint8(b & 0x3)
 }
 
-func (b B) SetCoarseX(val uint8) B {
-	return b&^0x3 | B(val&0x3)
+func (b *B) SetCoarseX(val uint8) {
+	*b &^= 0x3
+	*b |= B(val & 0x3)
 }
 
 func (b B) CoarseY() uint8 {
 	return uint8((b >> 2) & 0x7)
 }
 
-func (b B) SetCoarseY(val uint8) B {
-	return b&^(0x7<<2) | (B(val&0x7) << 2)
+func (b *B) SetCoarseY(val uint8) {
+	*b &^= 0x7 << 2
+	*b |= B(val&0x7) << 2
 }

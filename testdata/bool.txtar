@@ -32,12 +32,13 @@ func (a A) F1() bool {
 	return a&0x4000000000000000 != 0
 }
 
-func (a A) SetF1(val bool) A {
+func (a *A) SetF1(val bool) {
 	var ival A
 	if val {
 		ival = 1
 	}
-	return a&^0x4000000000000000 | ival<<62
+	*a &^= 0x4000000000000000
+	*a |= ival << 62
 }
 -- want.b --
 bitfield, fatal error:

@@ -25,30 +25,34 @@ func (a A) F1() uint8 {
 	return uint8(a & 0x3)
 }
 
-func (a A) SetF1(val uint8) A {
-	return a&^0x3 | A(val&0x3)
+func (a *A) SetF1(val uint8) {
+	*a &^= 0x3
+	*a |= A(val & 0x3)
 }
 
 func (a A) F3() uint8 {
 	return uint8((a >> 2) & 0x7)
 }
 
-func (a A) SetF3(val uint8) A {
-	return a&^(0x7<<2) | (A(val&0x7) << 2)
+func (a *A) SetF3(val uint8) {
+	*a &^= 0x7 << 2
+	*a |= A(val&0x7) << 2
 }
 
 func (a A) F2() uint8 {
 	return uint8(a & 0x7)
 }
 
-func (a A) SetF2(val uint8) A {
-	return a&^0x7 | A(val&0x7)
+func (a *A) SetF2(val uint8) {
+	*a &^= 0x7
+	*a |= A(val & 0x7)
 }
 
 func (a A) F4() uint8 {
 	return uint8((a >> 3) & 0x3)
 }
 
-func (a A) SetF4(val uint8) A {
-	return a&^(0x3<<3) | (A(val&0x3) << 3)
+func (a *A) SetF4(val uint8) {
+	*a &^= 0x3 << 3
+	*a |= A(val&0x3) << 3
 }
