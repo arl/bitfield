@@ -34,7 +34,8 @@ func TestSetCoarseX(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.s.SetCoarseX(tt.val); got != tt.want {
+		got := tt.s
+		if got.SetCoarseX(tt.val); got != tt.want {
 			t.Errorf("MyStruct(%b).SetCoarseX(%b) = %b, want %b", tt.s, tt.val, got, tt.want)
 		}
 	}
@@ -69,7 +70,8 @@ func TestSetCoarseY(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.s.SetCoarseY(tt.val); got != tt.want {
+		got := tt.s
+		if got.SetCoarseY(tt.val); got != tt.want {
 			t.Errorf("MyStruct(%b).SetCoarseY(%b) = %b, want %b", tt.s, tt.val, got, tt.want)
 		}
 	}
@@ -106,7 +108,8 @@ func TestSetLow(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.s.SetLow(tt.val); got != tt.want {
+		got := tt.s
+		if got.SetLow(tt.val); got != tt.want {
 			t.Errorf("MyStruct(%b).SetLow(%b) = %b, want %b", tt.s, tt.val, got, tt.want)
 		}
 	}
@@ -171,7 +174,8 @@ func TestSetF1(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.s.SetF1(tt.val); got != tt.want {
+		got := tt.s
+		if got.SetF1(tt.val); got != tt.want {
 			t.Errorf("MyStruct(%b).SetF1(%t) = %b, want %b", tt.s, tt.val, got, tt.want)
 		}
 	}
@@ -217,7 +221,8 @@ func TestSetF2(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := tt.s.SetF2(tt.val); got != tt.want {
+		got := tt.s
+		if got.SetF2(tt.val); got != tt.want {
 			t.Errorf("MyStruct(%b).SetF2(%t) = %b, want %b", tt.s, tt.val, got, tt.want)
 		}
 	}
