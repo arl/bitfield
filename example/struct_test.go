@@ -50,3 +50,44 @@ func TestRoundTrip(t *testing.T) {
 		t.Errorf("Wide roundtrip")
 	}
 }
+
+func TestColorPadding(t *testing.T) {
+	// Layout (LSB first): [pad:1][R:3][pad:1][G:3][pad:1][B:3][pad:4]
+	c := Color{R: 5, G: 2, B: 7}
+	p := c.Pack()
+	want := uint16(5)<<1 | uint16(2)<<5 | uint16(7)<<9
+	if p != want {
+		t.Fatalf("Color.Pack() = %#x, want %#x", p, want)
+	}
+	// Padding bits must be preserved as reserved on the wire and ignored on
+	// unpack: flipping them in the raw word must not influence channel values.
+	noisy := p | 1 | (1 << 4) | (1 << 8) | (0xF << 12)
+	back := UnpackColor(noisy)
+	if back != c {
+		t.Fatalf("UnpackColor ignored padding incorrectly: got %+v want %+v", back, c)
+	}
+	// Overflow is masked per-channel.
+	over := Color{R: 0xFF, G: 0xFF, B: 0xFF}
+	if UnpackColor(over.Pack()) != (Color{R: 7, G: 7, B: 7}) {
+		t.Fatalf("Color overflow masking")
+	}
+}
+
+func TestUnexportedStruct(t *testing.T) {
+	// Round-trip through the unexported pack/unpack helpers. This also
+	// asserts they exist with the expected (unexported) names.
+	p := padded{lo: 0xA, hi: 1, set: true}
+	back := unpackPadded(p.pack())
+	if back != p {
+		t.Fatalf("padded roundtrip: got %+v want %+v", back, p)
+	}
+	// The 2-bit gap between lo and hi must stay at zero after pack and must
+	// not leak into any field on unpack when set in the raw value.
+	raw := p.pack()
+	if raw&0x30 != 0 {
+		t.Fatalf("padded.pack leaked bits into the reserved slot: %#x", raw)
+	}
+	if unpackPadded(raw|0x30) != p {
+		t.Fatalf("unpackPadded read from reserved slot")
+	}
+}

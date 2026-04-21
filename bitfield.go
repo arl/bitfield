@@ -27,6 +27,19 @@
 // underlying kind is uint8, uint16, uint32, or uint64. Named types are
 // preserved in the emitted code, so `type Mode uint8` round-trips as Mode.
 //
+// Fields (exported or not) may be declared with the blank identifier `_`
+// to reserve bits without contributing a name to Pack/Unpack:
+//
+//	type Color struct {
+//	    _ uint8 `bitfield:"1"` // padding
+//	    R uint8 `bitfield:"3"`
+//	    _ uint8 `bitfield:"1"`
+//	    G uint8 `bitfield:"3"`
+//	}
+//
+// When the target type itself is unexported, the generated methods follow
+// suit: `pack` and `unpack<Type>` instead of `Pack`/`Unpack<Type>`.
+//
 // # Typical go:generate wiring
 //
 // Add a go:generate directive in your package:
@@ -48,20 +61,48 @@ import (
 
 // fieldSpec captures a single field's generator-relevant facts.
 type fieldSpec struct {
-	Name      string       // as declared
+	Name      string       // as declared; "_" for blank (padding) fields
 	TypeName  string       // e.g. "uint8" or "Mode"; used in emitted code
 	Kind      reflect.Kind // Bool, Uint8, Uint16, Uint32, Uint64
 	Width     uint         // declared bits
 	Offset    uint         // LSB offset within storage
 	KindWidth uint         // native width of Kind: 1 for bool, 8/16/32/64 otherwise
+	Blank     bool         // declared as `_`; reserves bits but emits no pack/unpack code
 }
 
 // typeSpec captures a struct's generator-relevant facts.
 type typeSpec struct {
-	Name    string
-	Fields  []fieldSpec
-	Total   uint   // sum of widths
-	Storage string // "uint8", "uint16", "uint32", "uint64"
+	Name     string
+	Fields   []fieldSpec
+	Total    uint   // sum of widths
+	Storage  string // "uint8", "uint16", "uint32", "uint64"
+	Exported bool   // whether the type is exported; controls visibility of generated funcs
+}
+
+// packName returns the name of the generated Pack method for t.
+// Exported types use "Pack"; unexported types use "pack" to keep visibility
+// aligned with the type itself.
+func (t typeSpec) packName() string {
+	if t.Exported {
+		return "Pack"
+	}
+	return "pack"
+}
+
+// unpackName returns the name of the generated Unpack function for t.
+// For an exported "Foo" the name is "UnpackFoo"; for an unexported "foo"
+// the name is "unpackFoo" (the type-name part is always capitalized so the
+// function reads naturally, while the leading verb follows the type's
+// visibility).
+func (t typeSpec) unpackName() string {
+	if t.Name == "" {
+		return "Unpack"
+	}
+	head := strings.ToUpper(t.Name[:1]) + t.Name[1:]
+	if t.Exported {
+		return "Unpack" + head
+	}
+	return "unpack" + head
 }
 
 func parseWidth(tag string) (uint, error) {
@@ -103,20 +144,29 @@ func writeType(buf *bytes.Buffer, t typeSpec) {
 func writeLayoutComment(buf *bytes.Buffer, t typeSpec) {
 	fmt.Fprintf(buf, "// %s bit layout (LSB first), total %d bits in %s:\n", t.Name, t.Total, t.Storage)
 	for _, f := range t.Fields {
+		label := f.Name
+		typeLabel := f.TypeName
+		if f.Blank {
+			label = "_"
+			typeLabel = "reserved"
+		}
 		if f.Width == 1 {
-			fmt.Fprintf(buf, "//   [%2d    ] %s (%s)\n", f.Offset, f.Name, f.TypeName)
+			fmt.Fprintf(buf, "//   [%2d    ] %s (%s)\n", f.Offset, label, typeLabel)
 		} else {
 			fmt.Fprintf(buf, "//   [%2d..%2d] %s (%s, %d bits)\n",
-				f.Offset, f.Offset+f.Width-1, f.Name, f.TypeName, f.Width)
+				f.Offset, f.Offset+f.Width-1, label, typeLabel, f.Width)
 		}
 	}
 }
 
 func writePack(buf *bytes.Buffer, t typeSpec) {
-	fmt.Fprintf(buf, "// Pack returns the bit-packed %s representation of v.\n", t.Storage)
-	fmt.Fprintf(buf, "func (v %s) Pack() %s {\n", t.Name, t.Storage)
+	fmt.Fprintf(buf, "// %s returns the bit-packed %s representation of v.\n", t.packName(), t.Storage)
+	fmt.Fprintf(buf, "func (v %s) %s() %s {\n", t.Name, t.packName(), t.Storage)
 	fmt.Fprintf(buf, "\tvar out %s\n", t.Storage)
 	for _, f := range t.Fields {
+		if f.Blank {
+			continue
+		}
 		writePackField(buf, t.Storage, f)
 	}
 	fmt.Fprintln(buf, "\treturn out")
@@ -177,10 +227,13 @@ func writePackField(buf *bytes.Buffer, storage string, f fieldSpec) {
 }
 
 func writeUnpack(buf *bytes.Buffer, t typeSpec) {
-	fmt.Fprintf(buf, "// Unpack%s decodes a packed %s into a %s.\n", t.Name, t.Storage, t.Name)
-	fmt.Fprintf(buf, "func Unpack%s(raw %s) %s {\n", t.Name, t.Storage, t.Name)
+	fmt.Fprintf(buf, "// %s decodes a packed %s into a %s.\n", t.unpackName(), t.Storage, t.Name)
+	fmt.Fprintf(buf, "func %s(raw %s) %s {\n", t.unpackName(), t.Storage, t.Name)
 	fmt.Fprintf(buf, "\treturn %s{\n", t.Name)
 	for _, f := range t.Fields {
+		if f.Blank {
+			continue
+		}
 		writeUnpackField(buf, t.Storage, f)
 	}
 	fmt.Fprintln(buf, "\t}")

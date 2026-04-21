@@ -72,6 +72,21 @@ func main() {
 		outputName = filepath.Join(dir, baseName)
 	}
 
+	// The generated file declares `package <pkg.Name>`, so it must live in
+	// the same directory as the source package; otherwise the Go toolchain
+	// will reject the result.
+	outAbs, err := filepath.Abs(outputName)
+	if err != nil {
+		log.Fatalf("resolving output path: %s", err)
+	}
+	dirAbs, err := filepath.Abs(dir)
+	if err != nil {
+		log.Fatalf("resolving source directory: %s", err)
+	}
+	if filepath.Dir(outAbs) != dirAbs {
+		log.Fatalf("-output must live in the source package directory %s, got %s", dirAbs, outAbs)
+	}
+
 	f, err := os.Create(outputName)
 	if err != nil {
 		log.Fatalf("creating output: %s", err)
@@ -107,7 +122,11 @@ func loadPackage(patterns []string) *packages.Package {
 	}
 
 	cfg := &packages.Config{
-		Mode: packages.NeedName | packages.NeedTypes | packages.NeedFiles,
+		// NeedSyntax/NeedTypesInfo force the loader to type-check from source
+		// rather than pulling export data, so unexported types and fields are
+		// visible in the package scope.
+		Mode: packages.NeedName | packages.NeedFiles | packages.NeedTypes |
+			packages.NeedSyntax | packages.NeedTypesInfo,
 	}
 	pkgs, err := packages.Load(cfg, normalized...)
 	if err != nil {
@@ -172,27 +191,32 @@ func analyzeType(pkg *packages.Package, typeName string) (typeSpec, error) {
 		return typeSpec{}, fmt.Errorf("%s is not a struct", typeName)
 	}
 
-	spec := typeSpec{Name: typeName}
+	spec := typeSpec{Name: typeName, Exported: tn.Exported()}
 	var offset uint
 
 	for i := 0; i < st.NumFields(); i++ {
 		field := st.Field(i)
 		tag := st.Tag(i)
 
-		if !field.Exported() {
-			return typeSpec{}, fmt.Errorf("bitfield: %s.%s must be exported", typeName, field.Name())
+		// Blank-identifier fields (`_`) are allowed as explicit padding: they
+		// reserve bits in the layout but emit no code referencing the field
+		// (which wouldn't compile anyway since `_` isn't addressable).
+		fieldLabel := field.Name()
+		if fieldLabel == "_" {
+			fieldLabel = fmt.Sprintf("_ (field %d)", i)
 		}
+
 		bitfieldTag, ok := reflect.StructTag(tag).Lookup("bitfield")
 		if !ok {
-			return typeSpec{}, fmt.Errorf("bitfield: %s.%s is missing a bitfield tag", typeName, field.Name())
+			return typeSpec{}, fmt.Errorf("bitfield: %s.%s is missing a bitfield tag", typeName, fieldLabel)
 		}
 		width, err := parseWidth(bitfieldTag)
 		if err != nil {
-			return typeSpec{}, fmt.Errorf("bitfield: %s.%s: %w", typeName, field.Name(), err)
+			return typeSpec{}, fmt.Errorf("bitfield: %s.%s: %w", typeName, fieldLabel, err)
 		}
 		fs, err := inspectFieldFromTypes(field, width)
 		if err != nil {
-			return typeSpec{}, fmt.Errorf("bitfield: %s.%s: %w", typeName, field.Name(), err)
+			return typeSpec{}, fmt.Errorf("bitfield: %s.%s: %w", typeName, fieldLabel, err)
 		}
 		fs.Offset = offset
 		spec.Fields = append(spec.Fields, fs)
@@ -210,7 +234,7 @@ func analyzeType(pkg *packages.Package, typeName string) (typeSpec, error) {
 
 // inspectFieldFromTypes builds a fieldSpec from a types.Var and its declared width.
 func inspectFieldFromTypes(field *types.Var, width uint) (fieldSpec, error) {
-	fs := fieldSpec{Name: field.Name()}
+	fs := fieldSpec{Name: field.Name(), Blank: field.Name() == "_"}
 	ft := field.Type()
 
 	// For named types (e.g. type Mode uint8), preserve the declared name.
