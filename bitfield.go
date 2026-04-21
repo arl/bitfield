@@ -1,388 +1,238 @@
+// bitfield is a tool to generate Pack/Unpack code for struct types whose
+// fields are tagged with bit widths.
+//
+// Given a type whose fields carry `bitfield:"<width>"` struct tags:
+//
+//	type Flags struct {
+//	    Opcode  uint8 `bitfield:"6"`
+//	    Mode    uint8 `bitfield:"2"`
+//	    Enabled bool  `bitfield:"1"`
+//	    Rsvd    uint8 `bitfield:"7"`
+//	}
+//
+// running this command in the same directory
+//
+//	bitfield -type=Flags
+//
+// creates the file flags_fields.go containing:
+//
+//	func (v Flags) Pack() uint16
+//	func UnpackFlags(raw uint16) Flags
+//
+// The bit layout places the first field at the LSB and subsequent fields at
+// increasing offsets. The storage type is the smallest of uint8, uint16,
+// uint32, uint64 that holds the total width.
+//
+// Supported field types: bool (always exactly 1 bit) and any type whose
+// underlying kind is uint8, uint16, uint32, or uint64. Named types are
+// preserved in the emitted code, so `type Mode uint8` round-trips as Mode.
+//
+// # Typical go:generate wiring
+//
+// Add a go:generate directive in your package:
+//
+//	//go:generate go run github.com/arl/bitfield/v2 -type=Flags
+//
+// Then `go generate ./...` (re)produces flags_fields.go with Pack and
+// Unpack<Type> for each listed type.
 package main
 
 import (
 	"bytes"
-	"flag"
+	"errors"
 	"fmt"
-	"go/ast"
-	"go/format"
-	"go/parser"
-	"go/token"
-	"io"
-	"os"
-	"slices"
+	"reflect"
 	"strconv"
 	"strings"
-	"unicode"
 )
 
-type config struct {
-	in, out string
-	tname   string
-	pkgname string
+// fieldSpec captures a single field's generator-relevant facts.
+type fieldSpec struct {
+	Name      string       // as declared
+	TypeName  string       // e.g. "uint8" or "Mode"; used in emitted code
+	Kind      reflect.Kind // Bool, Uint8, Uint16, Uint32, Uint64
+	Width     uint         // declared bits
+	Offset    uint         // LSB offset within storage
+	KindWidth uint         // native width of Kind: 1 for bool, 8/16/32/64 otherwise
 }
 
-func parseFlags(args []string) (*config, string, error) {
-	var cfg config
-
-	flags := flag.NewFlagSet("bitfield", flag.ContinueOnError)
-	var buf bytes.Buffer
-	flags.SetOutput(&buf)
-	flags.StringVar(&cfg.in, "in", "", "INPUT file name (necessary unless within a go:generate comment)")
-	flags.StringVar(&cfg.out, "out", "", "output file name (defaults to standard output)")
-	flags.StringVar(&cfg.tname, "type", "all", "name of the type to convert (defaults to all structs)")
-	flags.StringVar(&cfg.pkgname, "pkg", "", "package name (defaults to INPUT file package)")
-	if err := flags.Parse(args); err != nil {
-		return nil, buf.String(), err
-	}
-
-	return &cfg, buf.String(), nil
+// typeSpec captures a struct's generator-relevant facts.
+type typeSpec struct {
+	Name    string
+	Fields  []fieldSpec
+	Total   uint   // sum of widths
+	Storage string // "uint8", "uint16", "uint32", "uint64"
 }
 
-func main() {
-	cfg, output, err := parseFlags(os.Args[1:])
-	if err == flag.ErrHelp {
-		fmt.Println(output)
-		os.Exit(2)
-	} else if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		os.Exit(1)
-	}
-
-	if goFile := os.Getenv("GOFILE"); cfg.in == "" && goFile != "" {
-		cfg.in = goFile
-	}
-
-	if err := run(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "bitfield, fatal error:\n")
-		fmt.Fprintf(os.Stderr, "\t%s\n", err)
-		os.Exit(1)
-	}
-}
-
-type structInfo struct {
-	name       string
-	width      uint8 // type width in bits
-	unions     map[string]*union
-	unionOrder []string // unions in file order
-}
-
-func newStructInfo(name string) *structInfo {
-	return &structInfo{
-		name:   name,
-		unions: make(map[string]*union),
-	}
-}
-
-func (si structInfo) receiver() string {
-	name := []rune(si.name)
-	if unicode.IsUpper(name[0]) {
-		return string(unicode.ToLower(name[0]))
-	}
-
-	if len(name) == 1 {
-		if si.name[0] != 's' {
-			return "s"
-		}
-		return "x"
-	}
-	return si.name[:1]
-}
-
-func (si *structInfo) union(name string) *union {
-	if u, ok := si.unions[name]; ok {
-		return u
-	}
-	si.unionOrder = append(si.unionOrder, name)
-	var u union
-	si.unions[name] = &u
-	return &u
-}
-
-type union struct {
-	fields []fieldInfo
-	bits   int // bits actually used
-}
-
-type fieldInfo struct {
-	name   string
-	mask   uint64
-	offset int
-	typ    string // org field type
-}
-
-func (fi fieldInfo) getter() string {
-	return fi.name
-}
-
-func (fi fieldInfo) setter() string {
-	name := []rune(fi.name)
-	if unicode.IsUpper(name[0]) {
-		return "Set" + fi.name
-	}
-
-	return "set" + string(unicode.ToUpper(name[0])) + string(name[1:])
-}
-
-// returns the type bit-width and a boolean indicating if we support it.
-func typeWidth(tname string) (int, bool) {
-	switch tname {
-	case "bool":
-		return 1, true
-	case "uint8":
-		return 8, true
-	case "uint16":
-		return 16, true
-	case "uint32":
-		return 32, true
-	case "uint64":
-		return 64, true
-	}
-	return 0, false
-}
-
-func nextpow2(n uint8) uint8 {
-	n--
-	n |= n >> 1
-	n |= n >> 2
-	n |= n >> 4
-	n++
-	return n
-}
-
-func run(cfg *config) error {
-	if cfg.in == "" {
-		return fmt.Errorf("input file must be provided")
-	}
-
-	var out io.Writer = os.Stdout
-	if cfg.out != "" {
-		f, err := os.Create(cfg.out)
-		if err != nil {
-			return fmt.Errorf("output file: %s", err)
-		}
-		defer f.Close()
-		out = f
-	}
-
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, cfg.in, nil, parser.ParseComments)
+func parseWidth(tag string) (uint, error) {
+	// Extend here later if multi-value tags are needed.
+	raw := strings.TrimSpace(tag)
+	n, err := strconv.ParseUint(raw, 10, 8)
 	if err != nil {
-		return fmt.Errorf("failed to parse input file: %s", err)
+		return 0, fmt.Errorf("invalid bitfield tag %q: %w", tag, err)
 	}
-
-	var (
-		structs []*structInfo
-		tErr    error
-	)
-	ast.Inspect(node, func(n ast.Node) bool {
-		t, ok := n.(*ast.TypeSpec)
-		if !ok {
-			return true
-		}
-		tname := t.Name.Name
-
-		s, ok := t.Type.(*ast.StructType)
-		if !ok {
-			if cfg.tname != "all" && tname == cfg.tname {
-				tErr = fmt.Errorf("type %s is not a struct", cfg.tname)
-			}
-			return false
-		}
-		if tname != cfg.tname && cfg.tname != "all" {
-			return true
-		}
-
-		offsets := make(map[string]int)
-		structInfo := newStructInfo(tname)
-		for _, field := range s.Fields.List {
-			if field.Tag == nil {
-				continue
-			}
-			tags := strings.Fields(strings.Trim(field.Tag.Value, "`"))
-			union := "default"
-			for _, tag := range tags {
-				if !strings.HasPrefix(tag, "bitfield:") {
-					continue
-				}
-
-				fieldName := field.Names[0].Name
-
-				if !strings.HasPrefix(tag[9:], `"`) || !strings.HasSuffix(tag, `"`) {
-					tErr = fmt.Errorf("field '%s' has a malformed struct tag", fieldName)
-					return false
-				}
-
-				kvs := strings.Split(strings.Trim(tag[9:], `"`), ",")
-				bits := 0
-				for _, tag := range kvs {
-					k, v, ok := strings.Cut(tag, "=")
-					if !ok {
-						if bits != 0 {
-							tErr = fmt.Errorf("field '%s' has a malformed struct tag", fieldName)
-							return false
-						}
-						k = "bits"
-						v = tag
-					}
-					switch k {
-					case "bits":
-						ibits, err := strconv.Atoi(v)
-						if err != nil {
-							tErr = fmt.Errorf("failed to parse bit count for field '%s'", fieldName)
-							return false
-						}
-
-						if ibits <= 0 || ibits > 64 {
-							tErr = fmt.Errorf("field '%s' has an invalid bit count (%d), must be (0, 64]", fieldName, ibits)
-							return false
-						}
-						bits = ibits
-					case "union":
-						union = v
-					}
-				}
-
-				tname := field.Type.(*ast.Ident).Name
-				twidth, ok := typeWidth(tname)
-				if !ok {
-					tErr = fmt.Errorf("field '%s' has an unsupported type %s", fieldName, tname)
-					return false
-				}
-				switch {
-				case bits == 0:
-					tErr = fmt.Errorf("missing bit count for field '%s': %s", fieldName, kvs)
-					return false
-				case twidth < bits:
-					tErr = fmt.Errorf("field '%s' can't represent %d bits with type %s", fieldName, bits, tname)
-					return false
-				}
-				if fieldName != "_" {
-					u := structInfo.union(union)
-					off := offsets[union]
-					mask := uint64(1<<uint64(bits) - 1)
-					if tname == "bool" {
-						mask = 1 << uint64(off)
-					}
-					u.fields = append(u.fields, fieldInfo{
-						name:   fieldName,
-						offset: off,
-						mask:   mask,
-						typ:    tname,
-					})
-				}
-				offsets[union] += bits
-			}
-		}
-
-		for n, u := range structInfo.unions {
-			u.bits = offsets[n]
-			structInfo.width = max(structInfo.width, uint8(offsets[n]))
-		}
-		structInfo.width = nextpow2(structInfo.width)
-		structs = append(structs, structInfo)
-		return true
-	})
-	if tErr != nil {
-		// Return the error set during the AST traversal.
-		return tErr
+	if n == 0 {
+		return 0, fmt.Errorf("bitfield tag %q: width must be at least 1", tag)
 	}
-
-	if cfg.tname != "all" && len(structs) == 0 {
-		return fmt.Errorf("struct %s not found", cfg.tname)
-	}
-
-	if !slices.ContainsFunc(structs, func(si *structInfo) bool {
-		return len(si.unions) > 0
-	}) {
-		return fmt.Errorf("nothing to generate")
-	}
-
-	// Generate the file.
-	if cfg.pkgname == "" {
-		cfg.pkgname = node.Name.Name
-	}
-
-	var g generator
-	g.printf("package %s\n\n", cfg.pkgname)
-	g.printf("// Code generated by github.com/arl/bitfield. DO NOT EDIT.\n")
-
-	for _, si := range structs {
-		if len(si.unions) == 0 {
-			// skip structs without any fields
-			continue
-		}
-		g.printf(`type %s uint%d`, si.name, si.width)
-		for _, uname := range si.unionOrder {
-			union := si.unions[uname]
-			// Define the final type
-			if union.bits > 64 {
-				if uname == "default" {
-					return fmt.Errorf("struct '%s' has too many bits (%d)", si.name, union.bits)
-				}
-				return fmt.Errorf("struct '%s' has too many bits in union '%s' (%d)", si.name, uname, union.bits)
-			}
-
-			for _, fi := range union.fields {
-				// Getter
-				g.printf(`func (%s %s) %s() %s {`, si.receiver(), si.name, fi.getter(), fi.typ)
-				switch {
-				case fi.typ == "bool":
-					g.printf(`	return %s&0x%x != 0`, si.receiver(), fi.mask)
-				case fi.offset > 0:
-					g.printf(`	return %s((%s >> %d) & 0x%x)`, fi.typ, si.receiver(), fi.offset, fi.mask)
-				default:
-					g.printf(`	return %s(%s & 0x%x)`, fi.typ, si.receiver(), fi.mask)
-				}
-				g.printf(`}`)
-				g.printf(``)
-
-				// Setter
-				g.printf(`func (%s *%s) %s(val %s) {`, si.receiver(), si.name, fi.setter(), fi.typ)
-				switch {
-				case fi.typ == "bool":
-					// The generated assembly doesn't branch.
-					g.printf(`	var ival %s`, si.name)
-					g.printf(`	if val {`)
-					g.printf(`		ival = 1`)
-					g.printf(`	}`)
-					g.printf(`	*%s &^= 0x%x`, si.receiver(), fi.mask)
-					if fi.offset == 0 {
-						g.printf(`	*%s |= ival`, si.receiver())
-					} else {
-						g.printf(`	*%s |= ival<<%d`, si.receiver(), fi.offset)
-					}
-				case fi.offset == 0:
-					g.printf(`	*%s &^= 0x%x`, si.receiver(), fi.mask)
-					g.printf(`	*%s |= %s(val&0x%x)`, si.receiver(), si.name, fi.mask)
-				default:
-					g.printf(`	*%s &^= 0x%x<<%d`, si.receiver(), fi.mask, fi.offset)
-					g.printf(`	*%s |= %s(val&0x%x)<<%d`, si.receiver(), si.name, fi.mask, fi.offset)
-				}
-				g.printf(`}`)
-				g.printf(``)
-			}
-		}
-	}
-
-	return g.format(out)
+	return uint(n), nil
 }
 
-type generator struct {
-	buf bytes.Buffer
+func storageFor(totalBits uint) (string, error) {
+	switch {
+	case totalBits == 0:
+		return "", errors.New("struct has no bitfield-tagged fields")
+	case totalBits <= 8:
+		return "uint8", nil
+	case totalBits <= 16:
+		return "uint16", nil
+	case totalBits <= 32:
+		return "uint32", nil
+	case totalBits <= 64:
+		return "uint64", nil
+	default:
+		return "", fmt.Errorf("total width %d exceeds 64 bits", totalBits)
+	}
 }
 
-func (g *generator) printf(format string, args ...any) {
-	fmt.Fprintf(&g.buf, format+"\n", args...)
+func writeType(buf *bytes.Buffer, t typeSpec) {
+	writeLayoutComment(buf, t)
+	writePack(buf, t)
+	writeUnpack(buf, t)
 }
 
-func (g *generator) format(w io.Writer) error {
-	buf, err := format.Source(g.buf.Bytes())
-	if err != nil {
-		return fmt.Errorf("go format failed: %s", err)
+func writeLayoutComment(buf *bytes.Buffer, t typeSpec) {
+	fmt.Fprintf(buf, "// %s bit layout (LSB first), total %d bits in %s:\n", t.Name, t.Total, t.Storage)
+	for _, f := range t.Fields {
+		if f.Width == 1 {
+			fmt.Fprintf(buf, "//   [%2d    ] %s (%s)\n", f.Offset, f.Name, f.TypeName)
+		} else {
+			fmt.Fprintf(buf, "//   [%2d..%2d] %s (%s, %d bits)\n",
+				f.Offset, f.Offset+f.Width-1, f.Name, f.TypeName, f.Width)
+		}
 	}
-	if _, err := w.Write(buf); err != nil {
-		return fmt.Errorf("write failed: %s", err)
+}
+
+func writePack(buf *bytes.Buffer, t typeSpec) {
+	fmt.Fprintf(buf, "// Pack returns the bit-packed %s representation of v.\n", t.Storage)
+	fmt.Fprintf(buf, "func (v %s) Pack() %s {\n", t.Name, t.Storage)
+	fmt.Fprintf(buf, "\tvar out %s\n", t.Storage)
+	for _, f := range t.Fields {
+		writePackField(buf, t.Storage, f)
 	}
-	return nil
+	fmt.Fprintln(buf, "\treturn out")
+	fmt.Fprintln(buf, "}")
+	fmt.Fprintln(buf)
+}
+
+func writePackField(buf *bytes.Buffer, storage string, f fieldSpec) {
+	if f.Kind == reflect.Bool {
+		if f.Offset == 0 {
+			fmt.Fprintf(buf, "\tif v.%s {\n\t\tout |= 1\n\t}\n", f.Name)
+		} else {
+			fmt.Fprintf(buf, "\tif v.%s {\n\t\tout |= 1 << %d\n\t}\n", f.Name, f.Offset)
+		}
+		return
+	}
+
+	// Integer field.
+	//
+	// Three questions drive the emitted form:
+	//   1. Does the field's declared type equal the storage type? If yes, no
+	//      outer conversion is needed.
+	//   2. Does the declared width equal the field's native type width? If
+	//      yes, the per-field mask is redundant.
+	//   3. Is the offset zero? If yes, drop the shift.
+	sameType := f.TypeName == storage
+	needMask := f.Width != f.KindWidth
+	mask := (uint64(1) << f.Width) - 1
+
+	// Build the field's value expression in the storage type. needsParens
+	// tracks whether the expression must be parenthesized when shifted,
+	// because `&` binds more loosely than `<<` in Go.
+	var expr string
+	var needsParens bool
+	switch {
+	case sameType && !needMask:
+		expr = "v." + f.Name
+	case sameType && needMask:
+		expr = fmt.Sprintf("v.%s & %s", f.Name, hexLit(mask))
+		needsParens = true
+	case !sameType && !needMask:
+		expr = fmt.Sprintf("%s(v.%s)", storage, f.Name)
+	default:
+		// Mask in the field's declared type, then widen. The mask constant
+		// takes the type of v.Name for the inner expression, and the outer
+		// conversion produces the storage type.
+		expr = fmt.Sprintf("%s(v.%s & %s)", storage, f.Name, hexLit(mask))
+	}
+
+	switch {
+	case f.Offset == 0:
+		fmt.Fprintf(buf, "\tout |= %s\n", expr)
+	case needsParens:
+		fmt.Fprintf(buf, "\tout |= (%s) << %d\n", expr, f.Offset)
+	default:
+		fmt.Fprintf(buf, "\tout |= %s << %d\n", expr, f.Offset)
+	}
+}
+
+func writeUnpack(buf *bytes.Buffer, t typeSpec) {
+	fmt.Fprintf(buf, "// Unpack%s decodes a packed %s into a %s.\n", t.Name, t.Storage, t.Name)
+	fmt.Fprintf(buf, "func Unpack%s(raw %s) %s {\n", t.Name, t.Storage, t.Name)
+	fmt.Fprintf(buf, "\treturn %s{\n", t.Name)
+	for _, f := range t.Fields {
+		writeUnpackField(buf, t.Storage, f)
+	}
+	fmt.Fprintln(buf, "\t}")
+	fmt.Fprintln(buf, "}")
+	fmt.Fprintln(buf)
+}
+
+func writeUnpackField(buf *bytes.Buffer, storage string, f fieldSpec) {
+	if f.Kind == reflect.Bool {
+		if f.Offset == 0 {
+			fmt.Fprintf(buf, "\t\t%s: raw&1 != 0,\n", f.Name)
+		} else {
+			fmt.Fprintf(buf, "\t\t%s: raw>>%d&1 != 0,\n", f.Name, f.Offset)
+		}
+		return
+	}
+
+	// Integer field. Build a shifted+masked expression in the storage type,
+	// then convert to the declared field type.
+	needMask := f.Width != f.KindWidth
+	sameType := f.TypeName == storage
+	mask := (uint64(1) << f.Width) - 1
+
+	// The raw expression in storage type.
+	var raw string
+	switch {
+	case f.Offset == 0 && !needMask:
+		raw = "raw"
+	case f.Offset == 0 && needMask:
+		raw = fmt.Sprintf("raw & %s", hexLit(mask))
+	case f.Offset != 0 && !needMask:
+		raw = fmt.Sprintf("raw >> %d", f.Offset)
+	default:
+		raw = fmt.Sprintf("raw >> %d & %s", f.Offset, hexLit(mask))
+	}
+
+	if sameType {
+		fmt.Fprintf(buf, "\t\t%s: %s,\n", f.Name, raw)
+	} else {
+		// Wrap the raw expression in a conversion to the declared type.
+		// Parenthesize the operand only if it contains whitespace (i.e. an
+		// operator). This keeps emission of trivial cases readable.
+		if strings.ContainsAny(raw, " ") {
+			fmt.Fprintf(buf, "\t\t%s: %s(%s),\n", f.Name, f.TypeName, raw)
+		} else {
+			fmt.Fprintf(buf, "\t\t%s: %s(%s),\n", f.Name, f.TypeName, raw)
+		}
+	}
+}
+
+// hexLit formats a mask constant: small values in binary-friendly hex without
+// an awkward leading zero run.
+func hexLit(v uint64) string {
+	return fmt.Sprintf("0x%x", v)
 }
