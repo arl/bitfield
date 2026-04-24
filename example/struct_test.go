@@ -1,8 +1,6 @@
 package example
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestRoundTrip(t *testing.T) {
 	// Flags
@@ -48,6 +46,31 @@ func TestRoundTrip(t *testing.T) {
 	wb := UnpackWide(wp)
 	if wb != w {
 		t.Errorf("Wide roundtrip")
+	}
+}
+
+func TestBitAlias(t *testing.T) {
+	tiny := Tiny{
+		A: true,
+		B: u3(15), // out of range
+		C: true,
+	}
+
+	want := uint8(0b10001111)
+	tp := tiny.Pack()
+	if tp != want {
+		t.Errorf("packed tiny = 0b%0b, want 0b%0b", tp, want)
+	}
+
+	t2 := UnpackTiny(tp)
+	if t2.B = t2.B.Add(1); t2.B != 0 {
+		t.Errorf("b = 0b%0b, want 0b%0b", t2.B, 0)
+	}
+
+	want = uint8(0b10000001)
+	tp = t2.Pack()
+	if tp != want {
+		t.Errorf("packed tiny = 0b%0b, want 0b%0b", tp, want)
 	}
 }
 

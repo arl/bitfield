@@ -31,11 +31,12 @@ func UnpackFlags(raw uint16) Flags {
 	}
 }
 
-// Tiny bit layout (LSB first), total 5 bits in uint8:
+// Tiny bit layout (LSB first), total 8 bits in uint8:
 //
 //	[ 0    ] A (bool)
-//	[ 1.. 3] B (uint8, 3 bits)
-//	[ 4    ] C (bool)
+//	[ 1.. 3] B (u3, 3 bits)
+//	[ 4.. 6] _ (reserved, 3 bits)
+//	[ 7    ] C (bool)
 //
 // Pack returns the bit-packed uint8 representation of v.
 func (v Tiny) Pack() uint8 {
@@ -43,9 +44,9 @@ func (v Tiny) Pack() uint8 {
 	if v.A {
 		out |= 1
 	}
-	out |= (v.B & 0x7) << 1
+	out |= uint8(v.B&0x7) << 1
 	if v.C {
-		out |= 1 << 4
+		out |= 1 << 7
 	}
 	return out
 }
@@ -54,8 +55,8 @@ func (v Tiny) Pack() uint8 {
 func UnpackTiny(raw uint8) Tiny {
 	return Tiny{
 		A: raw&1 != 0,
-		B: raw >> 1 & 0x7,
-		C: raw>>4&1 != 0,
+		B: u3(raw >> 1 & 0x7),
+		C: raw>>7&1 != 0,
 	}
 }
 

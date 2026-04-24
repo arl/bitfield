@@ -239,12 +239,17 @@ func inspectFieldFromTypes(field *types.Var, width uint) (fieldSpec, error) {
 
 	// For named types (e.g. type Mode uint8), preserve the declared name.
 	// For unnamed built-ins (e.g. uint8 directly), use the basic type name.
-	if named, ok := ft.(*types.Named); ok {
-		fs.TypeName = named.Obj().Name()
-	} else if basic, ok := ft.(*types.Basic); ok {
-		fs.TypeName = basic.Name()
-	} else {
-		return fs, fmt.Errorf("unsupported unnamed type")
+	// For alias to built-ins (e.g. type u3 uint8), use the alias type name.
+
+	switch ft := ft.(type) {
+	case *types.Named:
+		fs.TypeName = ft.Obj().Name()
+	case *types.Basic:
+		fs.TypeName = ft.Name()
+	case *types.Alias:
+		fs.TypeName = ft.Obj().Name()
+	default:
+		return fs, fmt.Errorf("unsupported type %q", ft.String())
 	}
 
 	basic, ok := ft.Underlying().(*types.Basic)

@@ -1,3 +1,5 @@
+github.com/arl/bit v0.0.0-20260423144042-1e1b72862e06 h1:EjCSqEQrlrfH4Lw/jrJ1xNaN/t91rCTyZwvQVzpixc4=
+github.com/arl/bit v0.0.0-20260423144042-1e1b72862e06/go.mod h1:xBW7bVBkgNF+0UOCjIa4sFUXuzfB1SETbaitU6TD5Xw=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 golang.org/x/mod v0.35.0 h1:Ww1D637e6Pg+Zb2KrWfHQUnH2dQRLBQyAtpr/haaJeM=

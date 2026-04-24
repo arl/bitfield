@@ -1,5 +1,7 @@
 package example
 
+import "github.com/arl/bit"
+
 //go:generate go run .. -type=Flags,Tiny,Wide,Color,padded -output ./generated.go
 
 type Mode uint8
@@ -11,9 +13,12 @@ type Flags struct {
 	Rsvd    uint8 `bitfield:"7"`
 }
 
+type u3 = bit.U3
+
 type Tiny struct {
 	A bool  `bitfield:"1"`
-	B uint8 `bitfield:"3"`
+	B u3    `bitfield:"3"`
+	_ uint8 `bitfield:"3"`
 	C bool  `bitfield:"1"`
 }
 
