@@ -95,14 +95,14 @@ func (t typeSpec) packName() string {
 // function reads naturally, while the leading verb follows the type's
 // visibility).
 func (t typeSpec) unpackName() string {
-	if t.Name == "" {
-		return "Unpack"
-	}
-	head := strings.ToUpper(t.Name[:1]) + t.Name[1:]
+	// if t.Name == "" {
+	// 	return "Unpack"
+	// }
+	// head := strings.ToUpper(t.Name[:1]) + t.Name[1:]
 	if t.Exported {
-		return "Unpack" + head
+		return "Unpack" //+ head
 	}
-	return "unpack" + head
+	return "unpack" //+ head
 }
 
 func parseWidth(tag string) (uint, error) {
@@ -136,27 +136,8 @@ func storageFor(totalBits uint) (string, error) {
 }
 
 func writeType(buf *bytes.Buffer, t typeSpec) {
-	writeLayoutComment(buf, t)
 	writePack(buf, t)
 	writeUnpack(buf, t)
-}
-
-func writeLayoutComment(buf *bytes.Buffer, t typeSpec) {
-	fmt.Fprintf(buf, "// %s bit layout (LSB first), total %d bits in %s:\n", t.Name, t.Total, t.Storage)
-	for _, f := range t.Fields {
-		label := f.Name
-		typeLabel := f.TypeName
-		if f.Blank {
-			label = "_"
-			typeLabel = "reserved"
-		}
-		if f.Width == 1 {
-			fmt.Fprintf(buf, "//   [%2d    ] %s (%s)\n", f.Offset, label, typeLabel)
-		} else {
-			fmt.Fprintf(buf, "//   [%2d..%2d] %s (%s, %d bits)\n",
-				f.Offset, f.Offset+f.Width-1, label, typeLabel, f.Width)
-		}
-	}
 }
 
 func writePack(buf *bytes.Buffer, t typeSpec) {
@@ -228,8 +209,8 @@ func writePackField(buf *bytes.Buffer, storage string, f fieldSpec) {
 
 func writeUnpack(buf *bytes.Buffer, t typeSpec) {
 	fmt.Fprintf(buf, "// %s decodes a packed %s into a %s.\n", t.unpackName(), t.Storage, t.Name)
-	fmt.Fprintf(buf, "func %s(raw %s) %s {\n", t.unpackName(), t.Storage, t.Name)
-	fmt.Fprintf(buf, "\treturn %s{\n", t.Name)
+	fmt.Fprintf(buf, "func (v *%s) %s(raw %s) {\n", t.Name, t.unpackName(), t.Storage)
+	fmt.Fprintf(buf, "\t*v = %s{\n", t.Name)
 	for _, f := range t.Fields {
 		if f.Blank {
 			continue
